@@ -6,6 +6,8 @@
 
 <link href="~/css/header.css" rel="stylesheet" />
 <link href="~/css/denuncia.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" integrity="sha512-..." crossorigin="anonymous" />
+
 
 @* =======================================================
     BLOCO PARA EXIBIR MENSAGENS DE ALERTA (SUCESSO/ERRO)
@@ -38,7 +40,7 @@
 
     <form asp-action="Criar" enctype="multipart/form-data">
         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-        @Html.AntiForgeryToken() @* Garante o token para CSRF para formulários não-tag-helper (se houver) *@
+        @Html.AntiForgeryToken()
 
         <div class="form-group">
             <label for="Titulo_Denuncia">Título da Denúncia</label>
@@ -62,8 +64,6 @@
                 </div>
             </div>
         </div>
-
-        @* ***** ALTERAÇÃO AQUI: Removida a seleção de aluno manual (OK, mantido o comentário) ***** *@
 
         <div class="form-check mb-3">
             <input asp-for="DenunciaAnonima" class="form-check-input" />
@@ -92,62 +92,65 @@
             <div id="testemunhasContainer">
                 <div class="form-group">
                     <label>Testemunhas</label>
-                    <input type="text" name="Nome_Testemunha" placeholder="Nome" class="form-control mb-1" />
-                    <input type="text" name="Telefone_Testemunha" placeholder="Telefone" class="form-control" />
+                    <input type="text" name="Nome_Testemunha" placeholder="Nome da Testemunha 1 (Opcional)" class="form-control mb-1" />
+                    <input type="text" name="Telefone_Testemunha" placeholder="Telefone da Testemunha 1" class="form-control" />
                     <div class="form-note">Se possível, identifique claramente quem são as pessoas envolvidas.</div>
                 </div>
             </div>
-            <button type="button" class="btn btn-secondary mb-3" onclick="adicionarTestemunha()">Adicionar Testemunha</button>
+            <button type="button" class="btn btn-secondary mb-3" onclick="adicionarTestemunha()">Adicionar Outra Testemunha</button>
         </div>
 
         <div class="form-section">
             <h2 class="form-section-title">
-                <label for="arquivos" class="form-label"> <i class="fas fa-paperclip"></i> Anexos</label>
+                <label for="arquivos" class="form-label"> <i class="fas fa-paperclip"></i> Anexos (Fotos, vídeos, áudios)</label>
             </h2>
 
             <div class="file-upload-container">
                 <i class="fas fa-cloud-upload-alt"></i>
                 <p>Arraste arquivos aqui ou clique para selecionar</p>
-                @* ⚠️ MUDANÇA CRUCIAL AQUI: name="anexosArquivos" e o atributo multiple *@
                 <input type="file" name="anexosArquivos" class="form-control" id="arquivos" multiple />
-                <div class="form-note">
+                <div class="form-note" id="fileNote">
                     Formatos aceitos: PDF, JPG, PNG, MP4, MP3 (Máx. 10MB por arquivo). **Opcional.**
                 </div>
             </div>
         </div>
 
-        <button type="submit" class="btn-submit">Salvar</button>
+        <button type="submit" class="btn-submit">Salvar Denúncia</button>
     </form>
 </div>
 
 <script src="~/js/menu_dropdown.js"></script>
 <script src="~/js/open-modal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
 
 <script>
+    let testemunhaCount = 1;
+
     function adicionarTestemunha() {
+        testemunhaCount++;
         var container = document.getElementById("testemunhasContainer");
         var div = document.createElement("div");
         div.classList.add("mb-2");
         div.innerHTML = `
-            <input type="text" name="Nome_Testemunha" placeholder="Nome" class="form-control mb-1"/>
-            <input type="text" name="Telefone_Testemunha" placeholder="Telefone" class="form-control"/>
+            <hr class="mt-2 mb-2"/>
+            <label>Testemunha ${testemunhaCount}</label>
+            <input type="text" name="Nome_Testemunha" placeholder="Nome da Testemunha ${testemunhaCount} (Opcional)" class="form-control mb-1"/>
+            <input type="text" name="Telefone_Testemunha" placeholder="Telefone da Testemunha ${testemunhaCount}" class="form-control"/>
         `;
         container.appendChild(div);
     }
 
-    // O código JS para DenunciaAnonima foi mantido desativado conforme seu pedido,
-    // pois o Id_Aluno é obtido da sessão na Controller.
-
-    // Implementação básica de pré-visualização de arquivos selecionados (opcional, mas útil)
+    // Pré-visualização de arquivos selecionados
     document.getElementById('arquivos').addEventListener('change', function() {
         const fileInput = this;
-        const note = fileInput.nextElementSibling;
+        const note = document.getElementById('fileNote');
 
         if (fileInput.files.length > 0) {
             let fileNames = Array.from(fileInput.files).map(file => file.name).join(', ');
             note.innerHTML = `Arquivos selecionados (${fileInput.files.length}): <strong>${fileNames}</strong>`;
         } else {
-             note.innerHTML = `Formatos aceitos: PDF, JPG, PNG, MP4, MP3 (Máx. 10MB por arquivo). <strong>Opcional.</strong>`;
+            note.innerHTML = `Formatos aceitos: PDF, JPG, PNG, MP4, MP3 (Máx. 10MB por arquivo). <strong>Opcional.</strong>`;
         }
     });
 

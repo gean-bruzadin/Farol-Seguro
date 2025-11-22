@@ -4,18 +4,24 @@
     ViewData["Title"] = "Minhas Denúncias";
 }
 
+<hr />
+
+@* =======================================================
+    1. MENSAGENS DE ALERTA (Configurado para mostrar alerta vermelho de denúncia falsa)
+======================================================== *@
 @{
     if (TempData["MensagemSucesso"] != null)
     {
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <strong>Sucesso!</strong> @TempData["MensagemSucesso"]
+            <strong>Sucesso!</strong> @Html.Raw(TempData["MensagemSucesso"])
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     }
     else if (TempData["MensagemErro"] != null)
     {
+        @* Este bloco mostrará a notificação de Denúncia Falsa / Bloqueio *@
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <strong>Erro!</strong> @TempData["MensagemErro"]
+            <strong>Erro!</strong> @Html.Raw(TempData["MensagemErro"])
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     }
@@ -37,7 +43,7 @@
     {
         foreach (var item in Model)
         {
-            <div class="complaint-item" data-id="@item.Id_Denuncia">
+            <div class="complaint-item @(item.IsFalsa ? "is-falsa" : "")" data-id="@item.Id_Denuncia">
                 <div class="complaint-info">
                     <div class="complaint-id">Denúncia #@item.Id_Denuncia</div>
                     <div class="complaint-date">@item.DataCriacao_Denuncia.ToString("dd/MM/yyyy")</div>
@@ -47,6 +53,10 @@
 
                 <div class="status-badge @GetStatusClass(item.Status_Denuncia)">
                     @item.Status_Denuncia
+                    @if (item.IsFalsa)
+                    {
+                        <i class="fas fa-gavel text-danger ms-1" title="Denúncia marcada como Falsa"></i>
+                    }
                 </div>
             </div>
 
@@ -54,7 +64,7 @@
                 <div class="detail-content">
                     <h4>Denúncia #@item.Id_Denuncia</h4>
                     <div class="complaint-date">@item.DataCriacao_Denuncia.ToString("dd/MM/yyyy")</div>
-                    
+
                     <hr />
 
                     <div class="info-section">
@@ -66,6 +76,10 @@
                         <p><strong>Data:</strong> @item.DataCriacao_Denuncia.ToString("dd/MM/yyyy HH:mm")</p>
                         <p><strong>Aluno:</strong> @(item.DenunciaAnonima ? "Anónima" : item.Aluno?.Nome_Aluno ?? "Não informado")</p>
                         <p><strong>Escola:</strong> @item.Escola?.Nome_Escola</p>
+                        @if (item.IsFalsa)
+                        {
+                            <p class="text-danger"><strong>Situação:</strong> <i class="fas fa-times-circle"></i> Denúncia Marcada como **FALSA**.</p>
+                        }
                     </div>
 
                     <hr />
@@ -113,7 +127,7 @@
                             @foreach (var r in item.Respostas)
                             {
                                 <li>
-                                    <strong>@r.Funcionario?.Nome_Funcionario</strong> - 
+                                    <strong>@r.Funcionario?.Nome_Funcionario</strong> -
                                     @r.Data_Resposta.ToString("dd/MM/yyyy HH:mm"):
                                     <br />
                                     @r.Descricao_Resposta
@@ -127,8 +141,15 @@
                     }
 
                     <div class="mt-3 d-flex justify-content-end gap-2">
-                        <a asp-action="Editar" asp-route-id="@item.Id_Denuncia" class="btn btn-warning btn-sm" style="height: fit-content; margin-top: 1vh;">Editar</a>
-                        
+                        @if (!item.IsFalsa)
+                        {
+                            <a asp-action="Editar" asp-route-id="@item.Id_Denuncia" class="btn btn-warning btn-sm" style="height: fit-content; margin-top: 1vh;">Editar</a>
+                        }
+                        else
+                        {
+                            <button class="btn btn-warning btn-sm" disabled style="height: fit-content; margin-top: 1vh;" title="Denúncias Falsas não podem ser editadas.">Editar (Bloqueado)</button>
+                        }
+
                         <div class="mt-2 text-end">
                             <button type="button" class="btn btn-secondary btn-sm close-detail">
                                 <i class="fas fa-arrow-left"></i> Fechar
@@ -171,11 +192,11 @@
         return status?.ToLower() switch
         {
             "aberta" => "status-reported",
-            "pendente" => "status-investigating", 
-            "em aberto" => "status-investigating",
+            "investigacao" => "status-investigating",
             "respondida" => "status-investigating",
             "resolvida" => "status-resolved",
             "encerrada" => "status-closed",
+            "rejeitada - denúncia falsa" => "status-reported", // CLASSE NOVA sugerida para evitar conflito com 'reported'
             _ => "status-reported"
         };
     }

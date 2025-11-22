@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Farol_Seguro.Migrations
 {
     /// <inheritdoc />
-    public partial class AdicionarCampoTitulo : Migration
+    public partial class AdicionarCamposBloqueioDenunciaFalsa : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -116,7 +116,9 @@ namespace Farol_Seguro.Migrations
                     Genero_Aluno = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     DataNascimento_Aluno = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    Id_Nivel = table.Column<int>(type: "int", nullable: false)
+                    Id_Nivel = table.Column<int>(type: "int", nullable: false),
+                    ContadorDenunciasFalsas = table.Column<int>(type: "int", nullable: false),
+                    IsBloqueado = table.Column<bool>(type: "tinyint(1)", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -241,6 +243,7 @@ namespace Farol_Seguro.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     Status_Denuncia = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
+                    IsFalsa = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     Id_Aluno = table.Column<int>(type: "int", nullable: true),
                     Id_Escola = table.Column<int>(type: "int", nullable: false),
                     DenunciaAnonima = table.Column<bool>(type: "tinyint(1)", nullable: false)

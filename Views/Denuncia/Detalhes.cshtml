@@ -4,7 +4,7 @@
     ViewData["Title"] = "Detalhes da Denúncia";
     bool isAluno = User.IsInRole("Aluno");
     bool ehGestor = User.IsInRole("Funcionario") || User.IsInRole("Admin");
-    bool podeAlunoEditar = isAluno && (Model.Status_Denuncia == "Pendente" || Model.Status_Denuncia == "Aberta");
+    // Remove a variável 'podeAlunoEditar' pois a edição do aluno será tratada na nova lógica do botão/link.
     string actionVoltar = ehGestor ? "Index" : "MinhasDenuncias";
 }
 
@@ -36,7 +36,6 @@
     }
     else
     {
-        <!-- Card de Detalhes Principal -->
         <div class="details-card">
             <div class="details-card-header">
                 <h2 class="details-card-title">
@@ -120,7 +119,6 @@
                     </li>
                 </ul>
 
-                <!-- Seção de Anexos -->
                 <div class="details-section">
                     <h5 class="details-section-title">
                         <i class="fas fa-paperclip"></i>
@@ -144,7 +142,6 @@
                     }
                 </div>
 
-                <!-- Seção de Testemunhas -->
                 <div class="details-section">
                     <h5 class="details-section-title">
                         <i class="fas fa-users"></i>
@@ -171,7 +168,6 @@
                     }
                 </div>
 
-                <!-- Seção de Respostas -->
                 <div class="details-section">
                     <h5 class="details-section-title">
                         <i class="fas fa-comments"></i>
@@ -186,7 +182,7 @@
                                     <div class="response-content">@r.Descricao_Resposta</div>
                                     <div class="response-meta">
                                         <small class="text-muted">
-                                             <strong>@r.Funcionario?.Nome_Funcionario</strong> -
+                                            <strong>@r.Funcionario?.Nome_Funcionario</strong> -
                                             <i class="fas fa-clock"></i> @r.Data_Resposta.ToString("dd/MM/yyyy HH:mm")
                                         </small>
                                     </div>
@@ -200,71 +196,29 @@
                     }
                 </div>
 
-                <!-- Botões de Ação -->
                 <div class="details-actions">
                     <a asp-action="@actionVoltar" class="btn-details btn-back">
                         <i class="fas fa-arrow-left"></i>
                         Voltar
                     </a>
-                    
-                    @if (podeAlunoEditar || ehGestor)
+
+                    @* Lógica de Edição APENAS para Aluno, se não for falsa. Remove o botão Editar para gestores. *@
+                    @if (isAluno)
                     {
-                        <a asp-action="Editar" asp-route-id="@Model.Id_Denuncia" class="btn-details btn-edit">
-                            <i class="fas fa-edit"></i>
-                            Editar Denúncia
-                        </a>
+                        if (!Model.IsFalsa && (Model.Status_Denuncia == "Pendente" || Model.Status_Denuncia == "Aberta"))
+                        {
+                            <a asp-action="Editar" asp-route-id="@Model.Id_Denuncia" class="btn-details btn-edit">
+                                <i class="fas fa-edit"></i> Editar
+                            </a>
+                        }
+                        else if (Model.IsFalsa && Model.Id_Aluno.HasValue)
+                        {
+                            <button class="btn-details btn-edit" disabled title="Não é possível editar denúncias marcadas como Falsas.">
+                                <i class="fas fa-edit"></i> Editar (Bloqueado)
+                            </button>
+                        }
                     }
                 </div>
-
-                <!-- Formulários para Funcionário/Admin -->
-                @if (ehGestor)
-                {
-                    <!-- Formulário de Resposta -->
-                    <div class="details-section">
-                        <h5 class="details-section-title">
-                            <i class="fas fa-reply"></i>
-                            Adicionar Resposta
-                        </h5>
-                        <form asp-action="Responder" method="post" class="details-form">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="Id_Denuncia" value="@Model.Id_Denuncia" />
-                            <div class="form-group">
-                                <textarea name="Descricao_Resposta" class="form-control" rows="3" placeholder="Digite a resposta..." required></textarea>
-                            </div>
-                            <button type="submit" class="btn-details btn-success">
-                                <i class="fas fa-paper-plane"></i>
-                                Enviar Resposta
-                            </button>
-                        </form>
-                    </div>
-
-                    <!-- Formulário de Alteração de Status -->
-                    <div class="details-section">
-                        <h5 class="details-section-title">
-                            <i class="fas fa-sync-alt"></i>
-                            Alterar Status
-                        </h5>
-                        <form asp-action="AlterarStatus" method="post" class="details-form">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="id" value="@Model.Id_Denuncia" />
-                            <div class="form-group">
-                                <select name="novoStatus" class="form-control" required>
-                                    <option value="">-- Selecionar --</option>
-                                    <option value="Aberta">Aberta</option>
-                                    <option value="Pendente">Pendente</option>
-                                    <option value="Em Análise">Em Análise</option>
-                                    <option value="Respondida">Respondida</option>
-                                    <option value="Resolvida">Resolvida</option>
-                                    <option value="Encerrada">Encerrada</option>
-                                </select>
-                            </div>
-                            <button type="submit" class="btn-details btn-primary">
-                                <i class="fas fa-save"></i>
-                                Salvar Status
-                            </button>
-                        </form>
-                    </div>
-                }
             </div>
         </div>
     }
@@ -306,9 +260,9 @@
         border-left: 3px solid #8B0000;
     }
 
-    .attachment-item i {
-        color: #8B0000;
-    }
+        .attachment-item i {
+            color: #8B0000;
+        }
 
     .witness-item {
         padding: 8px 12px;

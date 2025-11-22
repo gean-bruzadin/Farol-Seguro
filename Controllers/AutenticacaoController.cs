@@ -46,7 +46,6 @@ namespace SafeLink_TCC.Controllers
                 .Include(f => f.Nivel)
                 .FirstOrDefaultAsync(f => f.Email_Funcionario == email);
 
-            // Assumindo que a tabela Funcionarios tem os campos Email_Funcionario, Senha_Funcionario e Nivel
             if (funcionario != null && BCrypt.Net.BCrypt.Verify(senha, funcionario.Senha_Funcionario))
             {
                 await CriarSessao(funcionario.Id_Funcionario.ToString(), funcionario.Nome_Funcionario, funcionario.Email_Funcionario, funcionario.Nivel.Nome_Nivel);
@@ -60,29 +59,34 @@ namespace SafeLink_TCC.Controllers
 
             if (aluno != null && BCrypt.Net.BCrypt.Verify(senha, aluno.Senha_Aluno))
             {
+                // ===============================================
+                // PASSO DE VERIFICAÇÃO DE BLOQUEIO PARA ALUNO (MANTIDO)
+                // ===============================================
+                if (aluno.IsBloqueado)
+                {
+                    ViewBag.Mensagem = "🚫 **Acesso Negado:** Sua conta foi bloqueada devido a múltiplas denúncias falsas.";
+                    return View();
+                }
+                // ===============================================
+
                 await CriarSessao(aluno.Id_Aluno.ToString(), aluno.Nome_Aluno, aluno.Email_Aluno, aluno.Nivel.Nome_Nivel);
                 return RedirectToAction("Index", "Home");
             }
 
-            // 4) Tenta autenticar como USUÁRIO COMUM (Se esta categoria existir e for diferente de Admin/Funcionario)
-            // Se o seu modelo for o original (Usuários para Admin/Funcionario) e o funcionário deveria estar em Usuários:
-            // **Você precisa garantir que o registro do funcionário foi criado na tabela Usuarios.**
-
-            // Se nenhuma das opções acima funcionar:
+            // 4) Se nenhuma das opções acima funcionar:
             ViewBag.Mensagem = "E-mail ou senha incorretos.";
             return View();
         }
 
-
         private async Task CriarSessao(string id, string nome, string email, string role)
         {
             var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.NameIdentifier, id),
-                new Claim(ClaimTypes.Name, nome),
-                new Claim(ClaimTypes.Email, email),
-                new Claim(ClaimTypes.Role, role) // Admin, Funcionario, Aluno
-            };
+    {
+        new Claim(ClaimTypes.NameIdentifier, id),
+        new Claim(ClaimTypes.Name, nome),
+        new Claim(ClaimTypes.Email, email),
+        new Claim(ClaimTypes.Role, role) // Admin, Funcionario, Aluno
+    };
 
             var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
 
@@ -92,7 +96,6 @@ namespace SafeLink_TCC.Controllers
                 new AuthenticationProperties { IsPersistent = true }
             );
         }
-
 
         [HttpGet]
         public async Task<IActionResult> Logout()

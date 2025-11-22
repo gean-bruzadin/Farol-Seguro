@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Farol_Seguro.Migrations
 {
     [DbContext(typeof(DbConfig))]
-    [Migration("20251121132959_AdicionarCampoTitulo")]
-    partial class AdicionarCampoTitulo
+    [Migration("20251122195030_AdicionarCamposBloqueioDenunciaFalsa")]
+    partial class AdicionarCamposBloqueioDenunciaFalsa
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -33,6 +33,9 @@ namespace Farol_Seguro.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id_Aluno"));
 
+                    b.Property<int>("ContadorDenunciasFalsas")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("DataNascimento_Aluno")
                         .HasColumnType("datetime(6)");
 
@@ -46,6 +49,9 @@ namespace Farol_Seguro.Migrations
 
                     b.Property<int>("Id_Nivel")
                         .HasColumnType("int");
+
+                    b.Property<bool>("IsBloqueado")
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("Nome_Aluno")
                         .IsRequired()
@@ -157,6 +163,9 @@ namespace Farol_Seguro.Migrations
 
                     b.Property<int>("Id_Escola")
                         .HasColumnType("int");
+
+                    b.Property<bool>("IsFalsa")
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("Status_Denuncia")
                         .IsRequired()

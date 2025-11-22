@@ -16,7 +16,11 @@ namespace Farol_Seguro.Models
         public string Categoria_Denuncia { get; set; }
         public string Status_Denuncia { get; set; }
 
-        
+        // --- CAMPO NOVO PARA BLOQUEADOR ---
+        // Flag para indicar se a denúncia foi marcada pelo Admin/Funcionário como falsa
+        public bool IsFalsa { get; set; } = false;
+        // ---------------------------------
+
         public int? Id_Aluno { get; set; }
         public Aluno? Aluno { get; set; }
 
@@ -28,7 +32,7 @@ namespace Farol_Seguro.Models
 
         public ICollection<Anexo> Anexos { get; set; }
 
-       public ICollection<Resposta> Respostas { get; set; }
+        public ICollection<Resposta> Respostas { get; set; }
         public ICollection<DenunciaTestemunha> DenunciaTestemunhas { get; set; }
         public ICollection<Notificacao> Notificacoes { get; set; }
 

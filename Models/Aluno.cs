@@ -19,6 +19,14 @@ namespace Farol_Seguro.Models
         [ForeignKey("Id_Nivel")]
         public Nivel Nivel { get; set; }
 
+        // --- CAMPOS NOVOS PARA BLOQUEIO ---
+        // Contador de denúncias falsas
+        public int ContadorDenunciasFalsas { get; set; } = 0;
+
+        // Flag para indicar se o aluno está bloqueado de criar novas denúncias
+        public bool IsBloqueado { get; set; } = false;
+        // ---------------------------------
+
         public ICollection<Denuncia> Denuncias { get; set; }
         public ICollection<Notificacao> Notificacoes { get; set; }
 

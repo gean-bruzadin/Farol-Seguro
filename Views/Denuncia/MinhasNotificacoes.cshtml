@@ -30,7 +30,7 @@ else
 
             <div class="d-flex align-items-stretch mb-2 border rounded-3 @itemClass">
 
-                @* O link de acesso à Denúncia ocupa a maior parte do espaço e mantém a função de marcar como lida (se você a implementou) *@
+                @* O link de acesso à Denúncia ocupa a maior parte do espaço *@
                 <a asp-controller="Denuncia" asp-action="Detalhes" asp-route-id="@item.Id_Denuncia" class="list-group-item-action flex-grow-1 p-3">
                     <div class="d-flex w-100 justify-content-between">
                         <h5 class="mb-1">
@@ -39,11 +39,11 @@ else
                         <span class="badge @badgeClass p-2 flex-shrink-0">
                             @if (!item.Lida)
                             {
-                            <i class="fas fa-exclamation-circle" style="display: flex; gap: 5px;">Nova</i>
-                        }
-                        else
-                        {
-                            <i class="fas fa-check" style="display: flex; gap: 5px;">Lida</i>
+                                <i class="fas fa-exclamation-circle" style="display: flex; gap: 5px;">Nova</i>
+                            }
+                            else
+                            {
+                                <i class="fas fa-check" style="display: flex; gap: 5px;">Lida</i>
                             }
                         </span>
                     </div>
@@ -53,7 +53,22 @@ else
                     <small class="text-muted">Recebida em: @item.DataCriacao.ToString("dd/MM/yyyy HH:mm")</small>
                 </a>
 
-                <div class="d-flex align-items-center me-2">
+                @* Botões de Ação: Marcar como Lida e Remover *@
+                <div class="d-flex align-items-center me-2 gap-2">
+
+                    @if (!item.Lida)
+                    {
+                        @* Usa um formulário POST para a ação "Marcar como Lida" *@
+                        <form asp-controller="Denuncia" asp-action="MarcarComoLida" method="post" style="display: inline;">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="idNotificacao" value="@item.Id_Notificacao" />
+                            <button type="submit" class="btn btn-outline-success btn-sm" title="Marcar como Lida">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </form>
+                    }
+
+                    @* Botão de Remover *@
                     <a asp-controller="Denuncia" asp-action="Remover" asp-route-idNotificacao="@item.Id_Notificacao"
                        class="btn btn-outline-danger btn-sm"
                        onclick="return confirm('Tem certeza que deseja remover esta notificação?');"

@@ -1,27 +1,30 @@
 ﻿@model IEnumerable<Farol_Seguro.Models.Denuncia>
 
 @{
-    ViewData["Title"] = "Denúncias";
-    // Define a lista de status disponíveis para o dropdown de FILTRO
-    var statusList = new List<string> { "Aberta", "Respondida", "Pendente", "Em Aberto", "Resolvida", "Encerrada" };
+    ViewData["Title"] = "Gerenciamento de Denúncias";
+    // Define a lista de status disponíveis para o dropdown de FILTRO
+    // Inclui o status 'Rejeitada - Denúncia Falsa'
+    var statusList = new List<string> { "Aberta", "Respondida", "Investigação", "Resolvida", "Encerrada", "Rejeitada - Denúncia Falsa" };
     var categoriaFixaList = new List<string> { "Verbal", "Social", "Físico", "Cyber", "Outro" };
 }
 
 @* =======================================================
-    1. MENSAGENS DE ALERTA
+    1. MENSAGENS DE ALERTA (AGORA COM @Html.Raw PARA FORMATAR MENSAGENS DO CONTROLLER)
 ======================================================== *@
 @{
     if (TempData["MensagemSucesso"] != null)
     {
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <strong>Sucesso!</strong> @TempData["MensagemSucesso"]
+            {{-- Usa Html.Raw --}}
+            <strong>Sucesso!</strong> @Html.Raw(TempData["MensagemSucesso"])
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     }
     else if (TempData["MensagemErro"] != null)
     {
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <strong>Erro!</strong> @TempData["MensagemErro"]
+            {{-- Usa Html.Raw --}}
+            <strong>Erro!</strong> @Html.Raw(TempData["MensagemErro"])
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     }
@@ -29,14 +32,20 @@
 
 <link href="~/css/header.css" rel="stylesheet" />
 <link href="~/css/lista.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" integrity="sha512-..." crossorigin="anonymous" />
 
-@* <div class="d-flex justify-content-between align-items-center mb-4 mt-3">
+
+<div class="d-flex justify-content-between align-items-center mb-4 mt-3">
     <h2>Gerenciamento de Denúncias</h2>
-    <a asp-action="Criar" class="btn btn-success">+ Nova Denúncia</a>
-</div> *@
+    @if (User.IsInRole("Aluno"))
+    {
+        // NOTA: O Aluno é bloqueado na Action Criar do Controller se estiver penalizado.
+        <a asp-action="Criar" class="btn btn-success">+ Nova Denúncia</a>
+    }
+</div>
 
 @* =======================================================
-    2. FORMULÁRIO DE FILTRO
+    2. FORMULÁRIO DE FILTRO
 ======================================================== *@
 <div class="card p-3 mb-4 shadow-sm">
     <h5 class="card-title">🔍 Filtros de Busca</h5>
@@ -46,7 +55,7 @@
             <div class="col-md-3 col-sm-6">
                 <label for="idBusca" class="form-label small text-muted">Número da Denúncia (ID)</label>
                 <input type="number" name="idBusca" id="idBusca" class="form-control"
-                       value="@ViewBag.CurrentIdBusca" placeholder="Ex: 123" />
+                                   value="@ViewBag.CurrentIdBusca" placeholder="Ex: 123" />
             </div>
 
             <div class="col-md-3 col-sm-6">
@@ -80,7 +89,7 @@
 </div>
 
 @* =======================================================
-    3. LISTA DE DENÚNCIAS
+    3. LISTA DE DENÚNCIAS (Layout Antigo Revertido)
 ======================================================== *@
 <div class="complaints-list">
     @if (Model == null || !Model.Any())
@@ -93,204 +102,184 @@
     {
         foreach (var item in Model)
         {
-            <div class="complaint-item" data-id="@item.Id_Denuncia">
+            @* item.Id_Denuncia removido do data-id para evitar o uso de JS expansível *@
+            <div class="complaint-item @(item.IsFalsa ? "is-falsa" : "")">
                 <div class="complaint-info">
                     <div class="complaint-id">Denúncia #@item.Id_Denuncia</div>
                     <div class="complaint-date">@item.DataCriacao_Denuncia.ToString("dd/MM/yyyy")</div>
-                    <div class="complaint-summary">@item.Titulo_Denuncia</div>
-                    <div class="complaint-category">@item.Categoria_Denuncia</div>
+                    <div class="complaint-summary">**@item.Titulo_Denuncia** - (@item.Categoria_Denuncia)</div>
+
+                    @* Informações de Status e Autor visíveis na lista *@
+                    <div class="d-flex align-items-center mt-2">
+                        <div class="status-badge @GetStatusClass(item.Status_Denuncia)">
+                            @item.Status_Denuncia
+                            @if (item.IsFalsa)
+                            {
+                                <i class="fas fa-gavel text-danger ms-1" title="Denúncia marcada como Falsa"></i>
+                            }
+                        </div>
+
+                        <div class="ms-3 small text-muted">
+                            Por: @(item.DenunciaAnonima ? "ANÔNIMA" : item.Aluno?.Nome_Aluno ?? "Não informado")
+                            @if (item.Aluno != null && item.Aluno.IsBloqueado)
+                            {
+                                <span class="badge bg-danger ms-2"><i class="fas fa-lock"></i> BLOQUEADO</span>
+                            }
+                        </div>
+
+
+                    </div>
                 </div>
 
-                <div class="status-badge @GetStatusClass(item.Status_Denuncia)">
-                    @item.Status_Denuncia
-                </div>
-            </div>
+                @* =======================================================
+                    BLOCO DE AÇÕES (Administrativas e Aluno)
+                ======================================================== *@
+                <div class="d-flex flex-wrap gap-2 mt-2 pt-2 border-top">
 
-            <div class="complaint-detail" id="detail-@item.Id_Denuncia" style="display:none;">
-                <div class="detail-content">
-                    <h4>Denúncia #@item.Id_Denuncia</h4>
-                    <p><strong>Titulo:</strong>@(item.Titulo_Denuncia ?? "-")</p>
-                    <p><strong>Descrição:</strong> @item.Descricao_Denuncia</p>
-                    <p><strong>Categoria:</strong> @item.Categoria_Denuncia</p>
-                    <p><strong>Status:</strong> @item.Status_Denuncia</p>
-                    <p><strong>Data:</strong> @item.DataCriacao_Denuncia.ToString("dd/MM/yyyy HH:mm")</p>
-                    <p><strong>Aluno:</strong> @(item.DenunciaAnonima ? "Anônima" : item.Aluno?.Nome_Aluno ?? "Não informado")</p>
-                    <p><strong>Escola:</strong> @item.Escola?.Nome_Escola</p>
-
-
-                    <hr />
-
-                    <h6>Anexos</h6>
-                    @if (item.Anexos != null && item.Anexos.Any())
+                    @* AÇÕES DISPONÍVEIS PARA ADMIN/FUNCIONÁRIO *@
+                    @if (User.IsInRole("Funcionario") || User.IsInRole("Admin"))
                     {
-                        <ul>
-                            @foreach (var a in item.Anexos)
-                            {
-                                <li><a href="@a.Caminho_Anexo" target="_blank">@a.Tipo_Anexo</a></li>
-                            }
-                        </ul>
-                    }
-                    else
-                    {
-                        <p>Sem anexos.</p>
-                    }
-
-                    <h6 class="mt-3">Testemunhas</h6>
-                    @if (item.DenunciaTestemunhas != null && item.DenunciaTestemunhas.Any())
-                    {
-                        <ul>
-                            @foreach (var dt in item.DenunciaTestemunhas)
-                            {
-                                <li>
-                                    @dt.Testemunha?.Nome_Testemunha
-                                    @if (!string.IsNullOrWhiteSpace(dt.Testemunha?.Telefone_Testemunha))
-                                    {
-                                        <span>- @dt.Testemunha.Telefone_Testemunha</span>
-                                    }
-                                </li>
-                            }
-                        </ul>
-                    }
-                    else
-                    {
-                        <p>Sem testemunhas.</p>
-                    }
-
-                    <h6 class="mt-3">Respostas</h6>
-                    @if (item.Respostas != null && item.Respostas.Any())
-                    {
-                        <ul>
-                            @foreach (var r in item.Respostas)
-                            {
-                                <li>@r.Descricao_Resposta</li>
-                            }
-                        </ul>
-                    }
-                    else
-                    {
-                        <p>Sem respostas.</p>
-                    }
-
-                   
-                        @* Botão para abrir modal de resposta — apenas visível para Funcionario/Admin *@
-                        @if (User.IsInRole("Funcionario") || User.IsInRole("Admin"))
+                        @* --- BOTÃO MARCAR COMO FALSA (AGORA CORRETO COM POST) --- *@
+                        @if (!item.IsFalsa)
                         {
-                            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#responderModal_@item.Id_Denuncia">Responder</button>
-
-                            <div class="modal fade" id="responderModal_@item.Id_Denuncia" tabindex="-1" aria-hidden="true">
-                                <div class="modal-dialog">
-                                    <div class="modal-content">
-                                        <form asp-action="Responder" method="post">
-                                            @Html.AntiForgeryToken()
-                                            <div class="modal-header">
-                                                <h5 class="modal-title">Responder denúncia #@item.Id_Denuncia</h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <input type="hidden" name="Id_Denuncia" value="@item.Id_Denuncia" />
-                                                <div class="mb-2">
-                                                    <label>Resposta</label>
-                                                    <textarea name="Descricao_Resposta" class="form-control" rows="4" required></textarea>
-                                                </div>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="submit" class="btn btn-success">Enviar</button>
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                            </div>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-
-                            @* Botão para abrir modal de alteração de status *@
-                            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#statusModal_@item.Id_Denuncia">Alterar Status</button>
-
-                            <div class="modal fade" id="statusModal_@item.Id_Denuncia" tabindex="-1" aria-hidden="true">
-                                <div class="modal-dialog">
-                                    <div class="modal-content">
-                                        <form asp-action="AlterarStatus" method="post">
-                                            @Html.AntiForgeryToken()
-                                            <div class="modal-header">
-                                                <h5 class="modal-title">Alterar status - #@item.Id_Denuncia</h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <input type="hidden" name="id" value="@item.Id_Denuncia" />
-                                                <div class="mb-2">
-                                                    <label>Escolha o novo status</label>
-                                                    <select name="novoStatus" class="form-select" required>
-                                                        <option value="">-- Selecionar --</option>
-                                                        <option value="Aberta" selected="@(item.Status_Denuncia == "Aberta")">Aberta</option>
-                                                        <option value="Pendente" selected="@(item.Status_Denuncia == "Pendente")">Pendente</option>
-                                                        <option value="Em Aberto" selected="@(item.Status_Denuncia == "Em Aberto")">Em Aberto</option>
-                                                        <option value="Respondida" selected="@(item.Status_Denuncia == "Respondida")">Respondida</option>
-                                                        <option value="Resolvida" selected="@(item.Status_Denuncia == "Resolvida")">Resolvida</option>
-                                                        <option value="Encerrada" selected="@(item.Status_Denuncia == "Encerrada")">Encerrada</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="submit" class="btn btn-primary">Salvar</button>
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                            </div>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
+                            <form asp-action="MarcarComoFalsa" method="post" style="display:inline;" onsubmit="return confirm('CONFIRMAR: Marcar denúncia #@item.Id_Denuncia como FALSA? Se for identificada, o aluno será penalizado.');">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="idDenuncia" value="@item.Id_Denuncia" />
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-gavel"></i> Marcar como Falsa
+                                </button>
+                            </form>
                         }
-                    </div>
+                        else
+                        {
+                            <button class="btn btn-danger btn-sm" disabled><i class="fas fa-check-double"></i> Já Falsa</button>
+                        }
 
-                    <div class="mt-2 text-end">
-                        <button type="button" class="btn btn-secondary btn-sm close-detail">
-                            <i class="fas fa-arrow-left"></i> Fechar
+                        @* --- Botão Responder (Modal) --- *@
+                        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#responderModal_@item.Id_Denuncia">
+                            <i class="fas fa-reply"></i> Responder
                         </button>
-                    </div>
-                </div>
-           
 
+                        @* --- Botão Alterar Status (Modal) --- *@
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#statusModal_@item.Id_Denuncia">
+                            <i class="fas fa-arrows-rotate"></i> Status
+                        </button>
+                    }
+
+                    @* AÇÃO DE EDIÇÃO (Bloqueada se for falsa, e agora bloqueada para Admin/Funcionario) *@
+                    @if (!User.IsInRole("Funcionario") && !User.IsInRole("Admin")) // Adicionada restrição para não mostrar Editar para Gestores
+                    {
+                        @if (!item.IsFalsa) // Restrição original (bloqueada se for falsa)
+                        {
+                            <a asp-action="Editar" asp-route-id="@item.Id_Denuncia" class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-edit"></i> Editar
+                            </a>
+                        }
+                        else if (item.Id_Aluno.HasValue) // Mostra botão desabilitado se for aluno e a denúncia for identificada e falsa
+                        {
+                            <button class="btn btn-outline-secondary btn-sm" disabled title="Não é possível editar denúncias marcadas como Falsas.">
+                                <i class="fas fa-edit"></i> Editar (Bloqueado)
+                            </button>
+                        }
+                    }
+
+                    <a asp-action="Detalhes" asp-route-id="@item.Id_Denuncia" class="btn btn-info btn-sm text-white">
+                        <i class="fas fa-search"></i> Detalhes
+                    </a>
+
+                </div>
+                @* =======================================================
+                    FIM DO BLOCO DE AÇÕES
+                ======================================================== *@
+            </div>
         }
     }
 </div>
 
 @* =======================================================
-    4. SCRIPTS (MANTIDOS)
+    4. MODAIS (RESPONDER E STATUS) - Mantidos para Admin/Funcionário
 ======================================================== *@
-<script>
-    document.querySelectorAll(".complaint-item").forEach(item => {
-        item.addEventListener("click", () => {
-            const id = item.getAttribute("data-id");
-            const detail = document.getElementById(`detail-${id}`);
+@if (User.IsInRole("Funcionario") || User.IsInRole("Admin"))
+{
+    foreach (var item in Model)
+    {
+        @* --- Modal Responder --- *@
+        <div class="modal fade" id="responderModal_@item.Id_Denuncia" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form asp-action="Responder" method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="modal-header">
+                            <h5 class="modal-title">Responder denúncia #@item.Id_Denuncia</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <input type="hidden" name="Id_Denuncia" value="@item.Id_Denuncia" />
+                            <div class="mb-2">
+                                <label>Resposta</label>
+                                <textarea name="Descricao_Resposta" class="form-control" rows="4" required></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="submit" class="btn btn-success">Enviar</button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
 
-            document.querySelectorAll(".complaint-detail").forEach(d => {
-                if (d !== detail) d.style.display = "none";
-            });
+        @* --- Modal Alterar Status --- *@
+        <div class="modal fade" id="statusModal_@item.Id_Denuncia" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form asp-action="AlterarStatus" method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="modal-header">
+                            <h5 class="modal-title">Alterar status - #@item.Id_Denuncia</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <input type="hidden" name="id" value="@item.Id_Denuncia" />
+                            <div class="mb-2">
+                                <label>Escolha o novo status</label>
+                                <select name="novoStatus" class="form-select" required>
+                                    <option value="">-- Selecionar --</option>
+                                    @foreach (var s in statusList)
+                                    {
+                                        <option value="@s" selected="@(item.Status_Denuncia == s)">@s</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="submit" class="btn btn-primary">Salvar</button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+}
 
-            detail.style.display = detail.style.display === "none" ? "block" : "none";
-        });
-    });
 
-    document.querySelectorAll(".close-detail").forEach(btn => {
-        btn.addEventListener("click", e => {
-            e.stopPropagation();
-            btn.closest(".complaint-detail").style.display = "none";
-        });
-    });
-</script>
-
+@* =======================================================
+    5. SCRIPTS e FUNCTIONS
+======================================================== *@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-@*Necessário para status*@
 @functions {
     public string GetStatusClass(string status)
     {
         return status?.ToLower() switch
         {
             "aberta" => "status-reported",
-            "pendente" => "status-investigating",
-            "em aberto" => "status-investigating",
+            "investigacao" => "status-investigating",
             "respondida" => "status-investigating",
             "resolvida" => "status-resolved",
             "encerrada" => "status-closed",
+            "rejeitada - denúncia falsa" => "status-reported", // <--- Esta é a classe
             _ => "status-reported"
         };
     }

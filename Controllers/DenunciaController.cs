@@ -109,12 +109,38 @@ namespace Farol_Seguro.Controllers
 
             return View(denuncia);
         }
+        // Método auxiliar para obter o Id_Aluno logado (baseado na sua lógica de Claims)
+        private int ObterIdAlunoLogado()
+        {
+            if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out int idAluno))
+            {
+                return idAluno;
+            }
+            return 0; // Retorna 0 se não encontrar ou falhar
+        }
 
-        // ============================================================== CRIAR =====================================================
+        // =======================================================================================================
+        // ACTIONS CRUD BÁSICAS (Com Bloqueio)
+        // =======================================================================================================
+
         [HttpGet]
         [Authorize(Roles = "Aluno")]
-        public IActionResult Criar()
+        public async Task<IActionResult> Criar()
         {
+            // === LÓGICA DE VERIFICAÇÃO DE BLOQUEIO (GET) ===
+            int idAluno = ObterIdAlunoLogado();
+            if (idAluno > 0)
+            {
+                var aluno = await _context.Alunos.FindAsync(idAluno);
+
+                if (aluno != null && aluno.IsBloqueado)
+                {
+                    TempData["MensagemErro"] = "🚫 **ALUNO BLOQUEADO:** Você está impedido de criar novas denúncias devido a um histórico de 3 ou mais denúncias falsas.";
+                    return RedirectToAction(nameof(MinhasDenuncias));
+                }
+            }
+            // ===============================================
+
             ViewData["Id_Escola"] = new SelectList(_context.Escolas, "Id_Escola", "Nome_Escola");
             return View();
         }
@@ -124,29 +150,38 @@ namespace Farol_Seguro.Controllers
         [Authorize(Roles = "Aluno")]
         public async Task<IActionResult> Criar(
             [Bind("Titulo_Denuncia,Descricao_Denuncia,Categoria_Denuncia,Id_Escola,DenunciaAnonima")] Denuncia denuncia,
-            List<IFormFile> anexosArquivos, // Alterado para List<IFormFile>
+            List<IFormFile> anexosArquivos,
             List<string> Nome_Testemunha,
             List<string> Telefone_Testemunha)
         {
-            // REMOÇÃO DO if (!ModelState.IsValid) conforme solicitado.
+            int idAluno = ObterIdAlunoLogado();
+            if (idAluno <= 0)
+            {
+                TempData["MensagemErro"] = "Erro: Usuário não autenticado ou ID inválido.";
+                return RedirectToAction("Login", "Account");
+            }
+
+            // === LÓGICA DE VERIFICAÇÃO DE BLOQUEIO (POST) ===
+            var aluno = await _context.Alunos.FindAsync(idAluno);
+            if (aluno != null && aluno.IsBloqueado)
+            {
+                TempData["MensagemErro"] = "🚫 **ALUNO BLOQUEADO:** Você está impedido de criar novas denúncias devido a um histórico de 3 ou mais denúncias falsas.";
+                return RedirectToAction(nameof(MinhasDenuncias));
+            }
+            // ===============================================
 
             try
             {
+                // Configurações básicas da denúncia
                 denuncia.DataCriacao_Denuncia = DateTime.Now;
                 denuncia.Status_Denuncia = "Aberta";
-
-                // Vincula a denúncia ao aluno logado
-                if (!int.TryParse(User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value, out int idAluno))
-                {
-                    TempData["MensagemErro"] = "Erro: Usuário não autenticado ou ID inválido.";
-                    return RedirectToAction("Login", "Account");
-                }
                 denuncia.Id_Aluno = idAluno;
 
+                // Salva a denúncia para obter o Id_Denuncia
                 _context.Add(denuncia);
-                await _context.SaveChangesAsync(); // Salva a denúncia para obter o Id
+                await _context.SaveChangesAsync();
 
-                // Lógica de upload de MÚLTIPLOS anexos (Opcional)
+                // 1. Lógica de upload de MÚLTIPLOS anexos
                 if (anexosArquivos != null && anexosArquivos.Count > 0)
                 {
                     string uploadsPasta = Path.Combine(_webHostEnvironment.WebRootPath, "uploads");
@@ -166,17 +201,16 @@ namespace Farol_Seguro.Controllers
                         var anexo = new Anexo
                         {
                             Tipo_Anexo = anexoArquivo.ContentType,
-                            NomeOriginal_Anexo = Path.GetFileName(anexoArquivo.FileName), // Para download
+                            NomeOriginal_Anexo = Path.GetFileName(anexoArquivo.FileName),
                             Caminho_Anexo = "/uploads/" + nomeArquivoUnico,
                             Id_Denuncia = denuncia.Id_Denuncia
                         };
-
                         _context.Anexos.Add(anexo);
                     }
                     await _context.SaveChangesAsync();
                 }
 
-                // Lógica de testemunhas (mantida)
+                // 2. Lógica de testemunhas
                 if (Nome_Testemunha != null && Nome_Testemunha.Count > 0)
                 {
                     for (int i = 0; i < Nome_Testemunha.Count; i++)
@@ -188,7 +222,6 @@ namespace Farol_Seguro.Controllers
                             Nome_Testemunha = Nome_Testemunha[i],
                             Telefone_Testemunha = Telefone_Testemunha.ElementAtOrDefault(i)
                         };
-
                         _context.Testemunhas.Add(testemunha);
                         await _context.SaveChangesAsync(); // Salva para obter o ID
 
@@ -213,121 +246,13 @@ namespace Farol_Seguro.Controllers
             }
         }
 
-        // ============================================================== DOWNLOAD ANEXO ==================================================
-        [Authorize]
-        public async Task<IActionResult> DownloadAnexo(int idAnexo)
-        {
-            var anexo = await _context.Anexos
-                .Include(a => a.Denuncia)
-                .FirstOrDefaultAsync(a => a.Id_Anexo == idAnexo);
-
-            if (anexo == null)
-            {
-                TempData["MensagemErro"] = "Anexo não encontrado.";
-                return NotFound();
-            }
-
-            // Segurança: Aluno só pode baixar anexos das suas próprias denúncias.
-            if (User.IsInRole("Aluno"))
-            {
-                if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out int alunoId) || anexo.Denuncia.Id_Aluno != alunoId)
-                {
-                    TempData["MensagemErro"] = "Você não tem permissão para baixar este anexo.";
-                    return Forbid();
-                }
-            }
-
-            try
-            {
-                string caminhoFisico = Path.Combine(_webHostEnvironment.WebRootPath, anexo.Caminho_Anexo.TrimStart('/'));
-
-                if (!System.IO.File.Exists(caminhoFisico))
-                {
-                    TempData["MensagemErro"] = "Arquivo não encontrado no servidor.";
-                    return NotFound();
-                }
-
-                // O NomeOriginal_Anexo deve ser usado para o nome do arquivo baixado
-                string nomeDoArquivo = anexo.NomeOriginal_Anexo ?? Path.GetFileName(anexo.Caminho_Anexo);
-
-                // Retorna o arquivo como FileResult
-                var fileStream = new FileStream(caminhoFisico, FileMode.Open, FileAccess.Read);
-                return File(fileStream, anexo.Tipo_Anexo, nomeDoArquivo);
-            }
-            catch (Exception ex)
-            {
-                TempData["MensagemErro"] = $"Erro ao processar o download: {ex.Message}";
-                return RedirectToAction("Detalhes", new { id = anexo.Id_Denuncia });
-            }
-        }
-
-        // ============================================================== REMOVER ANEXO (NOVA ACTION) ==================================================
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Funcionario,Admin,Aluno")]
-        public async Task<IActionResult> RemoverAnexo(int id)
-        {
-            var anexo = await _context.Anexos
-                .Include(a => a.Denuncia)
-                .FirstOrDefaultAsync(a => a.Id_Anexo == id);
-
-            if (anexo == null)
-            {
-                // Retorna HTTP 404 com um corpo JSON
-                return NotFound(new { message = "Anexo não encontrado." });
-            }
-
-            // Segurança: Garantir que apenas o dono da denúncia ou Admin/Funcionario possa remover
-            if (User.IsInRole("Aluno"))
-            {
-                if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out int alunoId) || anexo.Denuncia.Id_Aluno != alunoId)
-                {
-                    // CORREÇÃO APLICADA: Retorna HTTP 403 com um corpo JSON
-                    return StatusCode(403, new { message = "Você não tem permissão para remover este anexo." });
-                }
-
-                // Adicionalmente, verifica se a denúncia pode ser editada (status)
-                if (anexo.Denuncia.Status_Denuncia == "Respondida" || anexo.Denuncia.Status_Denuncia == "Resolvida" || anexo.Denuncia.Status_Denuncia == "Encerrada")
-                {
-                    // CORREÇÃO APLICADA: Retorna HTTP 403 com um corpo JSON
-                    return StatusCode(403, new { message = "A denúncia não pode mais ser editada (status: " + anexo.Denuncia.Status_Denuncia + ")." });
-                }
-            }
-
-            try
-            {
-                // 1. Apaga o arquivo físico do servidor
-                string caminhoFisico = Path.Combine(_webHostEnvironment.WebRootPath, anexo.Caminho_Anexo.TrimStart('/'));
-                if (System.IO.File.Exists(caminhoFisico))
-                {
-                    System.IO.File.Delete(caminhoFisico);
-                }
-
-                // 2. Apaga o registro do banco de dados
-                _context.Anexos.Remove(anexo);
-                await _context.SaveChangesAsync();
-
-                // Retorna um status de sucesso (200 OK) para o AJAX
-                return Ok(new { message = "Anexo removido com sucesso." });
-            }
-            catch (Exception ex)
-            {
-                // Retorna um erro interno (500) para o AJAX
-                return StatusCode(500, new { message = $"Erro ao remover anexo: {ex.Message}" });
-            }
-        }
-
-
-        // ============================================================== EDITAR =====================================================
         [HttpGet]
-        [Authorize(Roles = "Funcionario,Admin,Aluno")]
+        [Authorize(Roles = "Aluno")]
         public async Task<IActionResult> Editar(int? id)
         {
-            if (id == null)
-            {
-                TempData["MensagemErro"] = "ID da denúncia não fornecido.";
-                return NotFound();
-            }
+            int idAlunoLogado = ObterIdAlunoLogado();
+
+            if (id == null) { return NotFound(); }
 
             var denuncia = await _context.Denuncias
                 .Include(d => d.DenunciaTestemunhas)
@@ -335,31 +260,49 @@ namespace Farol_Seguro.Controllers
                 .Include(d => d.Anexos)
                 .FirstOrDefaultAsync(d => d.Id_Denuncia == id);
 
-            if (denuncia == null)
+            if (denuncia == null) { return NotFound(); }
+
+            // === 1. BLOQUEIO SE A DENÚNCIA FOR FALSA ===
+            if (denuncia.IsFalsa)
             {
-                TempData["MensagemErro"] = "Denúncia não encontrada.";
-                return NotFound();
+                TempData["MensagemErro"] = "⚠️ **DENÚNCIA FALSA:** Não é possível editar denúncias que foram marcadas como Falsas.";
+                return RedirectToAction(nameof(MinhasDenuncias));
+            }
+            // =======================================================================
+
+            string status = denuncia.Status_Denuncia?.ToLower();
+
+            // 🔒 BLOQUEIO GERAL: Status = Investigação → NÃO EDITA
+            if (status == "investigacao")
+            {
+                TempData["MensagemErro"] = $"Denúncias em '{denuncia.Status_Denuncia}' não podem ser editadas.";
+                return RedirectToAction(nameof(Detalhes), new { id });
             }
 
-            // 🔒 BLOQUEIO GERAL: Status = Pendente → NÃO EDITA
-            if (denuncia.Status_Denuncia == "Pendente")
-            {
-                TempData["MensagemErro"] = "Denúncias marcadas como 'Pendente' não podem ser editadas.";
-                return RedirectToAction(nameof(Detalhes), new { id = id });
-            }
-
+            // 🔒 BLOQUEIO ALUNO:
             if (User.IsInRole("Aluno"))
             {
-                if (denuncia.Id_Aluno.HasValue && denuncia.Id_Aluno.Value.ToString() != User.FindFirstValue(ClaimTypes.NameIdentifier))
+                // === 2. VERIFICAÇÃO DE BLOQUEIO DO ALUNO (3 ou mais falsas) ===
+                var aluno = await _context.Alunos.FindAsync(idAlunoLogado);
+                if (aluno != null && aluno.IsBloqueado)
+                {
+                    TempData["MensagemErro"] = "🚫 **ALUNO BLOQUEADO:** Você está impedido de editar denúncias devido ao histórico de denúncias falsas.";
+                    return RedirectToAction(nameof(MinhasDenuncias)); // Redireciona para sua lista.
+                }
+                // ===============================================================
+
+                // 🔒 Aluno só pode editar a própria denúncia
+                if (denuncia.Id_Aluno.HasValue && denuncia.Id_Aluno.Value != idAlunoLogado)
                 {
                     TempData["MensagemErro"] = "Você não tem permissão para editar esta denúncia.";
-                    return RedirectToAction(nameof(Detalhes), new { id = id });
+                    return RedirectToAction(nameof(Detalhes), new { id });
                 }
 
-                if (denuncia.Status_Denuncia == "Respondida" || denuncia.Status_Denuncia == "Resolvida" || denuncia.Status_Denuncia == "Encerrada")
+                // 🔒 Aluno não pode editar denúncias com status finalizado
+                if (status == "respondida" || status == "resolvida" || status == "encerrada")
                 {
-                    TempData["MensagemErro"] = "Esta denúncia não pode mais ser editada.";
-                    return RedirectToAction(nameof(Detalhes), new { id = id });
+                    TempData["MensagemErro"] = $"Denúncias com status '{denuncia.Status_Denuncia}' não podem ser editadas.";
+                    return RedirectToAction(nameof(Detalhes), new { id });
                 }
             }
 
@@ -371,56 +314,90 @@ namespace Farol_Seguro.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Funcionario,Admin,Aluno")]
+        [Authorize(Roles = "Aluno")]
         public async Task<IActionResult> Editar(
-    int id,
-    Denuncia denunciaAtualizada,
-    List<IFormFile> novosAnexosArquivos,
-    List<string> Nome_Testemunha,
-    List<string> Telefone_Testemunha)
+            int id,
+            Denuncia denunciaAtualizada,
+            List<IFormFile> novosAnexosArquivos,
+            List<string> Nome_Testemunha,
+            List<string> Telefone_Testemunha)
         {
             if (id != denunciaAtualizada.Id_Denuncia) return NotFound();
 
             var denuncia = await _context.Denuncias
                 .Include(d => d.DenunciaTestemunhas)
                     .ThenInclude(dt => dt.Testemunha)
+                .Include(d => d.Anexos) // Inclui anexos para poder listar os existentes na view se algo der errado
                 .FirstOrDefaultAsync(d => d.Id_Denuncia == id);
 
-            if (denuncia == null)
+            if (denuncia == null) { return NotFound(); }
+
+            // === 1. BLOQUEIO SE A DENÚNCIA FOR FALSA (POST) ===
+            if (denuncia.IsFalsa)
             {
-                TempData["MensagemErro"] = "Denúncia não encontrada para edição.";
-                return NotFound();
+                TempData["MensagemErro"] = "⚠️ **DENÚNCIA FALSA:** Não é possível editar denúncias que foram marcadas como Falsas.";
+                return RedirectToAction(nameof(MinhasDenuncias));
+            }
+            // ===========================================================================
+
+            string status = denuncia.Status_Denuncia?.ToLower();
+            int idAlunoLogado = ObterIdAlunoLogado();
+
+            // 🔒 Bloqueio no POST (Investigação)
+            if (status == "investigacao")
+            {
+                TempData["MensagemErro"] = $"Denúncias em '{denuncia.Status_Denuncia}' não podem ser salvas.";
+                return RedirectToAction(nameof(Detalhes), new { id });
             }
 
-            // 🔒 Bloqueio no POST também
-            if (denuncia.Status_Denuncia == "Pendente")
+            // 🔒 Segurança adicional para alunos
+            if (User.IsInRole("Aluno"))
             {
-                TempData["MensagemErro"] = "Denúncias marcadas como 'Pendente' não podem ser editadas.";
-                return RedirectToAction(nameof(Detalhes), new { id = id });
+                // === 2. VERIFICAÇÃO DE BLOQUEIO DO ALUNO (3 ou mais falsas) ===
+                var aluno = await _context.Alunos.FindAsync(idAlunoLogado);
+                if (aluno != null && aluno.IsBloqueado)
+                {
+                    TempData["MensagemErro"] = "🚫 **ALUNO BLOQUEADO:** Você está impedido de editar denúncias devido ao histórico de denúncias falsas.";
+                    return RedirectToAction(nameof(MinhasDenuncias)); // Redireciona para sua lista.
+                }
+                // ===============================================================
+
+                // 🔒 Aluno só pode editar a própria denúncia
+                if (denuncia.Id_Aluno.HasValue && denuncia.Id_Aluno.Value != idAlunoLogado)
+                {
+                    TempData["MensagemErro"] = "Você não pode editar esta denúncia.";
+                    return RedirectToAction(nameof(Detalhes), new { id });
+                }
+
+                // 🔒 Aluno não pode editar denúncias com status finalizado
+                if (status == "respondida" || status == "resolvida" || status == "encerrada")
+                {
+                    TempData["MensagemErro"] = $"Denúncias com status '{denuncia.Status_Denuncia}' não podem ser editadas.";
+                    return RedirectToAction(nameof(Detalhes), new { id });
+                }
             }
 
             try
             {
-                // Atualiza campos
+                // Atualiza campos básicos
                 denuncia.Titulo_Denuncia = denunciaAtualizada.Titulo_Denuncia;
                 denuncia.Descricao_Denuncia = denunciaAtualizada.Descricao_Denuncia;
                 denuncia.Categoria_Denuncia = denunciaAtualizada.Categoria_Denuncia;
-                denuncia.DenunciaAnonima = denunciaAtualizada.DenunciaAnonima; // Adicionado
+                denuncia.DenunciaAnonima = denunciaAtualizada.DenunciaAnonima;
                 denuncia.Id_Escola = denunciaAtualizada.Id_Escola;
 
-                // Funcionários/Admin podem alterar Aluno e Status (Alunos não podem)
+                // Funcionário/Admin podem editar aluno e status
                 if (User.IsInRole("Funcionario") || User.IsInRole("Admin"))
                 {
                     denuncia.Id_Aluno = denunciaAtualizada.Id_Aluno;
                     denuncia.Status_Denuncia = denunciaAtualizada.Status_Denuncia ?? denuncia.Status_Denuncia;
                 }
 
-                #region Lógica de Múltiplos Anexos
+                #region Adição de Novos Anexos
                 if (novosAnexosArquivos != null && novosAnexosArquivos.Count > 0)
                 {
                     string uploadsPasta = Path.Combine(_webHostEnvironment.WebRootPath, "uploads");
-                    if (!Directory.Exists(uploadsPasta))
-                        Directory.CreateDirectory(uploadsPasta);
+                    if (!Directory.Exists(uploadsPasta)) Directory.CreateDirectory(uploadsPasta);
 
                     foreach (var anexoArquivo in novosAnexosArquivos.Where(f => f != null && f.Length > 0))
                     {
@@ -432,52 +409,46 @@ namespace Farol_Seguro.Controllers
                             await anexoArquivo.CopyToAsync(fileStream);
                         }
 
-                        var novoAnexo = new Anexo
+                        var anexo = new Anexo
                         {
                             Tipo_Anexo = anexoArquivo.ContentType,
                             NomeOriginal_Anexo = Path.GetFileName(anexoArquivo.FileName),
                             Caminho_Anexo = "/uploads/" + nomeArquivoUnico,
                             Id_Denuncia = denuncia.Id_Denuncia
                         };
-
-                        _context.Anexos.Add(novoAnexo);
+                        _context.Anexos.Add(anexo);
                     }
                 }
                 #endregion
 
-                #region Lógica de Testemunhas
-                // Remove relações antigas e coleta IDs de testemunhas órfãs
-                var relacoesAntigas = _context.DenunciaTestemunhas
-                    .Where(dt => dt.Id_Denuncia == denuncia.Id_Denuncia)
-                    .ToList();
+                #region Adição de Novas Testemunhas e Remoção das Órfãs
+                // Remove as relações DenunciaTestemunha antigas primeiro
+                if (denuncia.DenunciaTestemunhas != null && denuncia.DenunciaTestemunhas.Any())
+                {
+                    _context.DenunciaTestemunhas.RemoveRange(denuncia.DenunciaTestemunhas);
+                }
 
-                var idsTestemunhasAntigas = relacoesAntigas.Select(dt => dt.Id_Testemunha).ToList();
-
-                _context.DenunciaTestemunhas.RemoveRange(relacoesAntigas);
-
-                // Adiciona novas testemunhas
+                // Adiciona as novas testemunhas e recria as relações
                 if (Nome_Testemunha != null && Nome_Testemunha.Count > 0)
                 {
                     for (int i = 0; i < Nome_Testemunha.Count; i++)
                     {
-                        var nome = Nome_Testemunha[i];
-                        if (string.IsNullOrWhiteSpace(nome)) continue;
+                        if (string.IsNullOrWhiteSpace(Nome_Testemunha[i])) continue;
 
-                        var novaTestemunha = new Testemunha
+                        var testemunha = new Testemunha
                         {
-                            Nome_Testemunha = nome,
+                            Nome_Testemunha = Nome_Testemunha[i],
                             Telefone_Testemunha = Telefone_Testemunha.ElementAtOrDefault(i)
                         };
+                        _context.Testemunhas.Add(testemunha);
+                        await _context.SaveChangesAsync(); // Salva para obter o ID
 
-                        _context.Testemunhas.Add(novaTestemunha);
-                        await _context.SaveChangesAsync();
-
-                        var novaRelacao = new DenunciaTestemunha
+                        var relacao = new DenunciaTestemunha
                         {
                             Id_Denuncia = denuncia.Id_Denuncia,
-                            Id_Testemunha = novaTestemunha.Id_Testemunha
+                            Id_Testemunha = testemunha.Id_Testemunha
                         };
-                        _context.DenunciaTestemunhas.Add(novaRelacao);
+                        _context.DenunciaTestemunhas.Add(relacao);
                     }
                 }
                 #endregion
@@ -485,73 +456,148 @@ namespace Farol_Seguro.Controllers
                 _context.Update(denuncia);
                 await _context.SaveChangesAsync();
 
-                // Limpar testemunhas órfãs (que não estão mais ligadas a nenhuma denúncia)
-                var testemunhasParaRemover = _context.Testemunhas
-                    .Where(t => idsTestemunhasAntigas.Contains(t.Id_Testemunha) && !_context.DenunciaTestemunhas.Any(dt => dt.Id_Testemunha == t.Id_Testemunha));
-                _context.Testemunhas.RemoveRange(testemunhasParaRemover);
+                // Lógica para remover testemunhas órfãs (Testemunhas que não estão mais relacionadas a nenhuma denúncia)
+                var testemunhasOrfas = await _context.Testemunhas
+                    .Where(t => !_context.DenunciaTestemunhas.Any(dt => dt.Id_Testemunha == t.Id_Testemunha))
+                    .ToListAsync();
+
+                _context.Testemunhas.RemoveRange(testemunhasOrfas);
                 await _context.SaveChangesAsync();
 
 
                 TempData["MensagemSucesso"] = $"Denúncia #{denuncia.Id_Denuncia} atualizada com sucesso!";
-                return RedirectToAction(nameof(Detalhes), new { id = id });
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!_context.Denuncias.Any(e => e.Id_Denuncia == id))
-                {
-                    TempData["MensagemErro"] = "Denúncia não encontrada. Concorrência falhou.";
-                    return NotFound();
-                }
-                throw;
+                return RedirectToAction(nameof(Detalhes), new { id });
             }
             catch (Exception ex)
             {
-                TempData["MensagemErro"] = $"Ocorreu um erro ao atualizar a denúncia: {ex.Message}";
+                TempData["MensagemErro"] = $"Erro ao atualizar: {ex.Message}";
+
                 ViewData["Id_Aluno"] = new SelectList(_context.Alunos, "Id_Aluno", "Nome_Aluno", denunciaAtualizada.Id_Aluno);
                 ViewData["Id_Escola"] = new SelectList(_context.Escolas, "Id_Escola", "Nome_Escola", denunciaAtualizada.Id_Escola);
+
                 return View(denunciaAtualizada);
             }
         }
 
+        // =======================================================================================================
+        // AÇÃO EXCLUSIVA DO ADMIN/FUNCIONÁRIO (MARCAR COMO FALSA)
+        // =======================================================================================================
 
-
-        // ============================================================== DELETAR ====================================================
-        [HttpGet]
+        [HttpPost]
         [Authorize(Roles = "Funcionario,Admin")]
-        public async Task<IActionResult> Deletar(int? id)
+        [ValidateAntiForgeryToken] // Recomendável para todas as ações POST que modificam dados
+        public async Task<IActionResult> MarcarComoFalsa(int idDenuncia)
         {
-            if (id == null) return NotFound();
-
             var denuncia = await _context.Denuncias
                 .Include(d => d.Aluno)
-                .Include(d => d.Escola)
-                .FirstOrDefaultAsync(d => d.Id_Denuncia == id);
+                .FirstOrDefaultAsync(d => d.Id_Denuncia == idDenuncia);
 
-            if (denuncia == null) return NotFound();
-
-            return View(denuncia);
-        }
-
-        [HttpPost, ActionName("Deletar")]
-        [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Funcionario,Admin")]
-        public async Task<IActionResult> DeletarConfirmado(int id)
-        {
-            var denuncia = await _context.Denuncias.FindAsync(id);
-            if (denuncia != null)
+            if (denuncia == null)
             {
-                // TODO: Adicionar lógica para remover anexos e relações (testemunhas, respostas) para evitar órfãos.
+                TempData["MensagemErro"] = "Denúncia não encontrada.";
+                return RedirectToAction(nameof(Index));
+            }
 
-                _context.Denuncias.Remove(denuncia);
-                await _context.SaveChangesAsync();
-                TempData["MensagemSucesso"] = "Denúncia excluída com sucesso!";
+            if (denuncia.IsFalsa)
+            {
+                TempData["WarningMessage"] = $"A Denúncia #{idDenuncia} já foi marcada como falsa.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // 1. Marca a denúncia como falsa e ATUALIZA O STATUS.
+            denuncia.IsFalsa = true;
+            denuncia.Status_Denuncia = "Rejeitada - Denúncia Falsa";
+
+            string mensagemParaAdmin = $"Denúncia #{idDenuncia} marcada como FALSA com sucesso.";
+            string mensagemParaAluno = "";
+
+            // 2. Aplica a penalidade e cria a notificação para o aluno.
+            if (denuncia.Id_Aluno.HasValue && denuncia.Aluno != null)
+            {
+                var aluno = denuncia.Aluno;
+                aluno.ContadorDenunciasFalsas++;
+
+                const int LIMITE_FALSAS = 3;
+
+                // Define a mensagem e o status de bloqueio
+                if (aluno.ContadorDenunciasFalsas >= LIMITE_FALSAS)
+                {
+                    aluno.IsBloqueado = true;
+
+                    // Mensagem de ALERTA VERMELHO (para o TempData)
+                    mensagemParaAluno = $"<strong>Atenção! Sua denúncia #{idDenuncia} foi marcada como FALSA.</strong> <br>" +
+                                        $"Você atingiu o limite de {LIMITE_FALSAS} denúncias falsas. <br>" +
+                                        $"Como consequência, seu acesso ao sistema está <strong>BLOQUEADO</strong> por tempo indeterminado. " +
+                                        $"Entre em contato com a administração da escola para mais detalhes.";
+
+                    // Mensagem para o funcionário/admin
+                    mensagemParaAdmin = $"Denúncia #{idDenuncia} marcada como FALSA. Aluno <strong>{aluno.Nome_Aluno}</strong> atingiu o limite de {LIMITE_FALSAS} e foi <strong>BLOQUEADO</strong>!";
+                }
+                else
+                {
+                    // Mensagem de ALERTA AMARELO (para o TempData)
+                    mensagemParaAluno = $"<strong>Atenção! Sua denúncia #{idDenuncia} foi marcada como FALSA.</strong> <br>" +
+                                        $"Você acumula {aluno.ContadorDenunciasFalsas}/{LIMITE_FALSAS} denúncias falsas. " +
+                                        $"O limite é de {LIMITE_FALSAS} denúncias falsas antes do <strong>BLOQUEIO</strong> da conta.";
+
+                    // Mensagem para o funcionário/admin
+                    mensagemParaAdmin = $"Denúncia #{idDenuncia} marcada como FALSA. Contador de denúncias falsas do aluno: {aluno.ContadorDenunciasFalsas}/{LIMITE_FALSAS}.";
+                }
+
+                // CRIA A NOTIFICAÇÃO NO BANCO DE DADOS (RESOLVE O ERRO 'UrlDestino' cannot be null)
+                var novaNotificacao = new Farol_Seguro.Models.Notificacao
+                {
+                    Id_Aluno = aluno.Id_Aluno,
+                    Id_Denuncia = denuncia.Id_Denuncia,
+                    // Mensagem em texto simples para armazenamento no BD
+                    Mensagem = $"Sua denúncia #{denuncia.Id_Denuncia} foi marcada como FALSA. Status: {aluno.ContadorDenunciasFalsas}/{LIMITE_FALSAS}. Bloqueio: {(aluno.IsBloqueado ? "Sim" : "Não")}.",
+                    Lida = false,
+                    DataCriacao = DateTime.Now,
+                    // 🛑 CORREÇÃO APLICADA: Define o UrlDestino
+                    UrlDestino = $"/Denuncia/Detalhes/{denuncia.Id_Denuncia}"
+                };
+                _context.Add(novaNotificacao);
+
+                _context.Update(aluno); // Salva as mudanças do contador/bloqueio do aluno
+            }
+
+            _context.Update(denuncia); // Salva a mudança do IsFalsa=true e Status_Denuncia
+            await _context.SaveChangesAsync(); // Deve funcionar sem erro MySqlException agora
+
+            // LÓGICA DE REDIRECIONAMENTO E MENSAGEM:
+            int? alunoLogadoId = GetCurrentAlunoId();
+
+            if (alunoLogadoId.HasValue && denuncia.Id_Aluno.HasValue && alunoLogadoId.Value == denuncia.Id_Aluno.Value)
+            {
+                // Se o usuário logado for o autor da denúncia, exibe o ALERTA VERMELHO na sua lista.
+                TempData["MensagemErro"] = mensagemParaAluno;
+                return RedirectToAction("MinhasDenuncias");
             }
             else
             {
-                TempData["MensagemErro"] = "Erro: Denúncia não encontrada para exclusão.";
+                // Se for o Admin/Funcionario, exibe a mensagem de sucesso padrão na lista geral.
+                TempData["MensagemSucesso"] = mensagemParaAdmin;
+                return RedirectToAction(nameof(Index));
             }
-            return RedirectToAction(nameof(Index));
         }
+
+        // -------------------------------------------------------------------------
+        // Este método auxiliar DEVE ser adicionado ao seu DenunciaController.cs
+        // -------------------------------------------------------------------------
+        private int? GetCurrentAlunoId()
+        {
+            // Lógica para obter o ID do aluno logado a partir dos Claims.
+            // Você deve garantir que o Claim "Id_Aluno" está sendo definido na sua autenticação.
+            var idClaim = User.Claims.FirstOrDefault(c => c.Type == "Id_Aluno");
+            if (idClaim != null && int.TryParse(idClaim.Value, out int alunoId))
+            {
+                return alunoId;
+            }
+            return null;
+        }
+
+       
+
 
         // ============================================================== RESPONDER (REDIRECIONAMENTO ALTERADO) ==================================================
         [HttpPost]
@@ -760,85 +806,68 @@ namespace Farol_Seguro.Controllers
         {
             if (ano == 0) ano = DateTime.Now.Year;
 
+            // Definições de Status
+            var statusFinais = new[] { "Resolvida", "Encerrada" };
+            const string STATUS_FALSA = "Rejeitada - Denúncia Falsa";
+            const string STATUS_INVESTIGACAO = "Investigação";
+
             // Totais
             var totalDenuncias = await _context.Denuncias.CountAsync();
-            // A denúncia com status "Aberta" na imagem deve ser contabilizada aqui se não tiver um tratamento específico
-            var totalPendentes = await _context.Denuncias.CountAsync(d => d.Status_Denuncia == "Pendente");
+            var totalInvestigadas = await _context.Denuncias.CountAsync(d => d.Status_Denuncia == STATUS_INVESTIGACAO);
+            var totalResolvidas = await _context.Denuncias.CountAsync(d => statusFinais.Contains(d.Status_Denuncia));
+            var totalFalsas = await _context.Denuncias.CountAsync(d => d.Status_Denuncia == STATUS_FALSA);
             var denunciasMes = await _context.Denuncias.CountAsync(d =>
                 d.DataCriacao_Denuncia.Month == DateTime.Now.Month && d.DataCriacao_Denuncia.Year == DateTime.Now.Year);
 
-            // Categorias
-            var statusFinais = new[] { "Resolvida", "Encerrada", "Concluída" };
-
-            var totalResolvidas = await _context.Denuncias.CountAsync(d =>
-                statusFinais.Contains(d.Status_Denuncia));
-
             var totalEmAnalise = await _context.Denuncias.CountAsync(d =>
-                d.Status_Denuncia == "Em Análise" || d.Status_Denuncia == "Respondida");
+                d.Status_Denuncia == STATUS_INVESTIGACAO || d.Status_Denuncia == "Respondida");
 
-            var totalOutros = totalDenuncias - (totalPendentes + totalResolvidas + totalEmAnalise);
+            var totalOutros = totalDenuncias - (totalInvestigadas + totalResolvidas + totalEmAnalise + totalFalsas);
             if (totalOutros < 0) totalOutros = 0;
 
-            // KPI global: média (reusa seu método)
+            // KPI global
             double mediaTempoHoras = await CalcularMediaTempoResolucaoAsync();
             double mediaTempoDias = mediaTempoHoras / 24.0;
 
-            // Dados mensais: criadas por mês (ano selecionado)
+            // Dados para o Gráfico de Criadas, Resolvidas e Falsas por Mês
             var criadasPorMes = await _context.Denuncias
                 .Where(d => d.DataCriacao_Denuncia.Year == ano)
                 .GroupBy(d => d.DataCriacao_Denuncia.Month)
                 .Select(g => new { Mes = g.Key, Quantidade = g.Count() })
                 .ToListAsync();
 
-            // Logs de status finais no ano
+            var falsasPorMes = await _context.Denuncias
+                .Where(d => d.DataCriacao_Denuncia.Year == ano && d.Status_Denuncia == STATUS_FALSA)
+                .GroupBy(d => d.DataCriacao_Denuncia.Month)
+                .Select(g => new { Mes = g.Key, Quantidade = g.Count() })
+                .ToListAsync();
+
+            // Contagem de Resolvidas por Mês (Baseada no último Log de Status Final)
             var logsFinal = await _context.LogStatus
                 .Where(l => statusFinais.Contains(l.Status_Novo) && l.Timestamp.Year == ano)
                 .ToListAsync();
 
-            // ****************************************************
-            // CORREÇÃO FINAL APLICADA AQUI: Contagem de resolvidas por mês
-            // Filtra pelo último log final, mas SÓ SE O STATUS ATUAL for um status final.
-            // ****************************************************
-            // 1. Encontrar o ÚLTIMO log de status final para cada denúncia no ano
-            var ultimosLogsDeResolucao = logsFinal
+            var resolvidasPorMes = logsFinal
                 .GroupBy(l => l.Id_Denuncia)
                 .Select(g => g.OrderByDescending(l => l.Timestamp).FirstOrDefault())
                 .Where(l => l != null)
-                .ToList();
-
-            // 2. Filtrar os IDs de denúncias que estão ATUALMENTE em um status final
-            var idsAtualmenteResolvidas = await _context.Denuncias
-                .Where(d => statusFinais.Contains(d.Status_Denuncia))
-                .Select(d => d.Id_Denuncia)
-                .ToListAsync();
-
-            // 3. Filtrar o conjunto de logs de resolução para incluir apenas aquelas que permanecem resolvidas
-            var logsResolvidasAtuais = ultimosLogsDeResolucao
-                .Where(l => idsAtualmenteResolvidas.Contains(l.Id_Denuncia))
-                .ToList();
-
-            // 4. Agrupar por Mês usando apenas os logs das denúncias que ainda estão resolvidas
-            var resolvidasPorMes = logsResolvidasAtuais
                 .GroupBy(l => l.Timestamp.Month)
                 .Select(g => new { Mes = g.Key, Quantidade = g.Count() })
                 .ToList();
-            // ****************************************************
 
-            // arrays 12 meses
+            // Inicializar arrays de 12 meses
             int[] arrCriadas = Enumerable.Range(1, 12).Select(m => 0).ToArray();
             int[] arrResolvidas = Enumerable.Range(1, 12).Select(m => 0).ToArray();
+            int[] arrFalsas = Enumerable.Range(1, 12).Select(m => 0).ToArray();
+
             foreach (var c in criadasPorMes) arrCriadas[c.Mes - 1] = c.Quantidade;
             foreach (var r in resolvidasPorMes) arrResolvidas[r.Mes - 1] = r.Quantidade;
+            foreach (var f in falsasPorMes) arrFalsas[f.Mes - 1] = f.Quantidade;
 
-            // MEDIA HORAS POR MES (log-based)
-            double[] mediaHorasPorMes = new double[12];
-
-            // ids que tiveram final no ano
-            // OBS: Para a média, é mais comum contar o tempo de TODAS que atingiram a conclusão, 
-            // mesmo que reabertas, mas manteremos o escopo original.
+            // Média de Tempo de Resolução em Dias por Mês
+            double[] mediaDiasPorMes = new double[12];
             var idsResolvidasNoAno = logsFinal.Select(l => l.Id_Denuncia).Distinct().ToList();
 
-            // buscar logs completos só para esses ids
             var logsDasDenuncias = await _context.LogStatus
                 .Where(l => idsResolvidasNoAno.Contains(l.Id_Denuncia))
                 .OrderBy(l => l.Id_Denuncia).ThenBy(l => l.Timestamp)
@@ -846,8 +875,6 @@ namespace Farol_Seguro.Controllers
 
             for (int mes = 1; mes <= 12; mes++)
             {
-                // Aqui, o cálculo da média de tempo continua usando todas as que foram concluídas no mês
-                // (idsNoMes), independentemente do status atual, pois mede o desempenho do processo de conclusão.
                 var idsNoMes = logsFinal.Where(l => l.Timestamp.Month == mes).Select(l => l.Id_Denuncia).Distinct().ToList();
                 double somaHoras = 0;
                 int cont = 0;
@@ -856,8 +883,8 @@ namespace Farol_Seguro.Controllers
                 {
                     var logs = logsDasDenuncias.Where(l => l.Id_Denuncia == id).ToList();
 
-                    // START: primeiro "Em Análise" OU se não existir, a primeira alteração de status
-                    var inicio = logs.FirstOrDefault(l => l.Status_Novo == "Em Análise") ?? logs.FirstOrDefault();
+                    // START: primeiro log com status "Investigação" ou o primeiro log (se for o caso)
+                    var inicio = logs.FirstOrDefault(l => l.Status_Novo == STATUS_INVESTIGACAO) ?? logs.FirstOrDefault();
                     // END: último log com status final
                     var fim = logs.LastOrDefault(l => statusFinais.Contains(l.Status_Novo));
 
@@ -867,27 +894,29 @@ namespace Farol_Seguro.Controllers
                         cont++;
                     }
                 }
-
-                mediaHorasPorMes[mes - 1] = cont > 0 ? somaHoras / cont : 0;
+                // Converte a média de horas para dias
+                mediaDiasPorMes[mes - 1] = cont > 0 ? (somaHoras / cont) / 24.0 : 0;
             }
 
             // ViewBags
             ViewBag.Total = totalDenuncias;
-            ViewBag.Pendentes = totalPendentes;
+            ViewBag.Pendentes = totalInvestigadas;
             ViewBag.Mes = denunciasMes;
-            ViewBag.MediaTempoResolucaoDias = mediaTempoDaysToString(mediaTempoDias); // helper abaixo
+            ViewBag.MediaTempoResolucaoDias = mediaTempoDaysToString(mediaTempoDias);
 
             ViewBag.DadosGrafico = new
             {
-                Pendentes = totalPendentes,
+                Pendentes = totalInvestigadas,
                 Resolvidas = totalResolvidas,
                 EmAnalise = totalEmAnalise,
+                Falsas = totalFalsas, // NOVO: Total de Falsas no Donut Chart
                 Outros = totalOutros
             };
 
             ViewBag.MensalCriadas = arrCriadas;
             ViewBag.MensalResolvidas = arrResolvidas;
-            ViewBag.MediaHorasPorMes = mediaHorasPorMes;
+            ViewBag.MensalFalsas = arrFalsas; // NOVO: Denúncias Falsas por Mês
+            ViewBag.MediaDiasPorMes = mediaDiasPorMes; // ALTERADO: Média em Dias por Mês
             ViewBag.AnoSelecionado = ano;
 
             return View();
@@ -941,6 +970,11 @@ namespace Farol_Seguro.Controllers
         {
             if (ano == 0) ano = DateTime.Now.Year;
 
+            // Definições de Status
+            var statusFinais = new[] { "Resolvida", "Encerrada" };
+            const string STATUS_FALSA = "Rejeitada - Denúncia Falsa";
+            const string STATUS_INVESTIGACAO = "Investigação";
+
             // Criadas por mês
             var criadasPorMes = await _context.Denuncias
                 .Where(d => d.DataCriacao_Denuncia.Year == ano)
@@ -948,39 +982,31 @@ namespace Farol_Seguro.Controllers
                 .Select(g => new { Mes = g.Key, Quantidade = g.Count() })
                 .ToListAsync();
 
-            // Status finais
-            var statusFinais = new[] { "Resolvida", "Encerrada", "Concluída" };
+            // Logs de Status para Resolvidas e Média
             var logsFinal = await _context.LogStatus
                 .Where(l => statusFinais.Contains(l.Status_Novo) && l.Timestamp.Year == ano)
                 .ToListAsync();
 
-            // ****************************************************
-            // CORREÇÃO FINAL APLICADA AQUI: Contagem de resolvidas por mês
-            // ****************************************************
-            var ultimosLogsDeResolucao = logsFinal
+            // Contagem de Resolvidas por Mês
+            var resolvidasPorMes = logsFinal
                 .GroupBy(l => l.Id_Denuncia)
                 .Select(g => g.OrderByDescending(l => l.Timestamp).FirstOrDefault())
                 .Where(l => l != null)
-                .ToList();
-
-            var idsAtualmenteResolvidas = await _context.Denuncias
-                .Where(d => statusFinais.Contains(d.Status_Denuncia))
-                .Select(d => d.Id_Denuncia)
-                .ToListAsync();
-
-            var logsResolvidasAtuais = ultimosLogsDeResolucao
-                .Where(l => idsAtualmenteResolvidas.Contains(l.Id_Denuncia))
-                .ToList();
-
-            var resolvidasPorMes = logsResolvidasAtuais
                 .GroupBy(l => l.Timestamp.Month)
                 .Select(g => new { Mes = g.Key, Quantidade = g.Count() })
                 .ToList();
-            // ****************************************************
+
+            // Contagem de Falsas por Mês (NOVO)
+            var falsasPorMes = await _context.Denuncias
+                .Where(d => d.DataCriacao_Denuncia.Year == ano && d.Status_Denuncia == STATUS_FALSA)
+                .GroupBy(d => d.DataCriacao_Denuncia.Month)
+                .Select(g => new { Mes = g.Key, Quantidade = g.Count() })
+                .ToListAsync();
 
             // Inicializar arrays completos
             int[] arrCriadas = Enumerable.Range(1, 12).Select(m => 0).ToArray();
             int[] arrResolvidas = Enumerable.Range(1, 12).Select(m => 0).ToArray();
+            int[] arrFalsas = Enumerable.Range(1, 12).Select(m => 0).ToArray(); // NOVO
 
             foreach (var c in criadasPorMes)
                 arrCriadas[c.Mes - 1] = c.Quantidade;
@@ -988,8 +1014,11 @@ namespace Farol_Seguro.Controllers
             foreach (var r in resolvidasPorMes)
                 arrResolvidas[r.Mes - 1] = r.Quantidade;
 
-            // Média por mês
-            double[] mediaHoras = new double[12];
+            foreach (var f in falsasPorMes)
+                arrFalsas[f.Mes - 1] = f.Quantidade; // NOVO
+
+            // Média de Tempo de Resolução em Dias por Mês (ALTERADO)
+            double[] mediaDias = new double[12];
 
             var logsDasDenuncias = await _context.LogStatus
                 .Where(l => logsFinal.Select(x => x.Id_Denuncia).Contains(l.Id_Denuncia))
@@ -1009,7 +1038,8 @@ namespace Farol_Seguro.Controllers
                 foreach (var id in idsNoMes)
                 {
                     var logs = logsDasDenuncias.Where(l => l.Id_Denuncia == id).ToList();
-                    var inicio = logs.FirstOrDefault(l => l.Status_Novo == "Em Análise") ?? logs.First();
+                    // START: primeiro log com status "Investigação" ou o primeiro log (se for o caso)
+                    var inicio = logs.FirstOrDefault(l => l.Status_Novo == STATUS_INVESTIGACAO) ?? logs.FirstOrDefault();
                     var fim = logs.LastOrDefault(l => statusFinais.Contains(l.Status_Novo));
 
                     if (inicio != null && fim != null && fim.Timestamp > inicio.Timestamp)
@@ -1018,8 +1048,8 @@ namespace Farol_Seguro.Controllers
                         cont++;
                     }
                 }
-
-                mediaHoras[mes - 1] = cont > 0 ? soma / cont : 0;
+                // Converte a média de horas para dias
+                mediaDias[mes - 1] = cont > 0 ? (soma / cont) / 24.0 : 0;
             }
 
             return Json(new
@@ -1027,7 +1057,8 @@ namespace Farol_Seguro.Controllers
                 ano = ano,
                 criadas = arrCriadas,
                 resolvidas = arrResolvidas,
-                mediaHoras = mediaHoras
+                falsas = arrFalsas, // NOVO: Denúncias Falsas
+                mediaDias = mediaDias // ALTERADO: Média em Dias
             });
         }
 
@@ -1045,7 +1076,7 @@ namespace Farol_Seguro.Controllers
                 .Select(g => new { Mes = g.Key, Quantidade = g.Count() })
                 .ToListAsync();
 
-            var statusFinais = new[] { "Resolvida", "Encerrada", "Concluída" };
+            var statusFinais = new[] { "Resolvida", "Encerrada" };
             var logsFinal = await _context.LogStatus
                 .Where(l => statusFinais.Contains(l.Status_Novo) && l.Timestamp.Year == ano)
                 .ToListAsync();
@@ -1106,7 +1137,7 @@ namespace Farol_Seguro.Controllers
                 .Select(g => new { Mes = g.Key, Quantidade = g.Count() })
                 .ToListAsync();
 
-            var statusFinais = new[] { "Resolvida", "Encerrada", "Concluída" };
+            var statusFinais = new[] { "Resolvida", "Encerrada" };
             var logsFinal = await _context.LogStatus
                 .Where(l => statusFinais.Contains(l.Status_Novo) && l.Timestamp.Year == ano)
                 .ToListAsync();
@@ -1213,7 +1244,7 @@ namespace Farol_Seguro.Controllers
         {
             // 1. DEFINIÇÃO DOS STATUS DE TEMPO:
             const string STATUS_INICIO_ANALISE = "Em Análise";
-            var statusFinais = new[] { "Resolvida", "Encerrada", "Concluída" };
+            var statusFinais = new[] { "Resolvida", "Encerrada" };
 
             // 2. IDENTIFICAR DENÚNCIAS RESOLVIDAS
             var idsDenunciasResolvidas = await _context.LogStatus
@@ -1264,6 +1295,130 @@ namespace Farol_Seguro.Controllers
 
             // Retorna a média em horas
             return denunciasContadas > 0 ? totalHoras / denunciasContadas : 0.0;
+
+        }
+
+        private string FormatarTempo(double totalHoras)
+        {
+            if (totalHoras <= 0)
+            {
+                return "N/A";
+            }
+
+            // Calcula os componentes
+            int dias = (int)Math.Floor(totalHoras / 24);
+            double horasRestantesDecimal = totalHoras % 24;
+            int horas = (int)Math.Floor(horasRestantesDecimal);
+            int minutos = (int)Math.Round((horasRestantesDecimal - horas) * 60);
+
+            // Ajuste se os minutos arredondarem para 60
+            if (minutos == 60)
+            {
+                minutos = 0;
+                horas += 1;
+            }
+            if (horas == 24)
+            {
+                horas = 0;
+                dias += 1;
+            }
+
+            var partes = new System.Collections.Generic.List<string>();
+
+            if (dias > 0)
+            {
+                partes.Add($"{dias} dia{(dias > 1 ? "s" : "")}");
+            }
+            if (horas > 0)
+            {
+                partes.Add($"{horas} hora{(horas > 1 ? "s" : "")}");
+            }
+
+            // Se a duração for muito curta (menos de 1 hora), mostra minutos
+            if (dias == 0 && horas == 0 && minutos > 0)
+            {
+                partes.Add($"{minutos} min");
+            }
+
+            if (partes.Count == 0 && totalHoras > 0)
+            {
+                // Se a duração for muito curta (menos de 1 minuto), mostra 'min'
+                return "< 1 min";
+            }
+
+            // Combina as partes
+            if (partes.Count > 1)
+            {
+                string last = partes[partes.Count - 1];
+                partes.RemoveAt(partes.Count - 1);
+                return string.Join(", ", partes) + " e " + last;
+            }
+
+            return partes.FirstOrDefault() ?? "N/A";
+        }
+        [HttpGet]
+        [Authorize(Roles = "Funcionario,Admin")]
+        public async Task<IActionResult> GetKpiData(int ano = 0)
+        {
+            if (ano == 0) ano = DateTime.Now.Year;
+
+            var statusFinais = new[] { "Resolvida", "Encerrada" };
+
+            // 1. KPI Total Denúncias (Total Acumulado)
+            var totalDenuncias = await _context.Denuncias.CountAsync();
+
+            // 2. KPI Denúncias no Mês (Mês Atual do Ano Selecionado)
+            var denunciasMes = await _context.Denuncias.CountAsync(d =>
+                d.DataCriacao_Denuncia.Month == DateTime.Now.Month && d.DataCriacao_Denuncia.Year == ano);
+
+            // 3. KPI Média de Tempo de Resolução (APENAS para o ano selecionado)
+
+            // Obter logs de status final (Resolvida/Encerrada) para o ano
+            var logsFinal = await _context.LogStatus
+                .Where(l => statusFinais.Contains(l.Status_Novo) && l.Timestamp.Year == ano)
+                .ToListAsync();
+
+            var idsResolvidasNoAno = logsFinal.Select(l => l.Id_Denuncia).Distinct().ToList();
+
+            // Obter todos os logs relevantes para o cálculo do tempo
+            var logsDasDenuncias = await _context.LogStatus
+                .Where(l => idsResolvidasNoAno.Contains(l.Id_Denuncia))
+                .OrderBy(l => l.Id_Denuncia).ThenBy(l => l.Timestamp)
+                .ToListAsync();
+
+            double somaHoras = 0;
+            int cont = 0;
+            const string STATUS_INVESTIGACAO = "Investigação";
+
+            foreach (var id in idsResolvidasNoAno)
+            {
+                var logs = logsDasDenuncias.Where(l => l.Id_Denuncia == id).ToList();
+
+                // START: primeiro log com status "Investigação" ou o primeiro log (se for o caso)
+                var inicio = logs.FirstOrDefault(l => l.Status_Novo == STATUS_INVESTIGACAO) ?? logs.FirstOrDefault();
+                // END: último log com status final
+                var fim = logs.LastOrDefault(l => statusFinais.Contains(l.Status_Novo));
+
+                if (inicio != null && fim != null && fim.Timestamp > inicio.Timestamp)
+                {
+                    somaHoras += (fim.Timestamp - inicio.Timestamp).TotalHours;
+                    cont++;
+                }
+            }
+
+            double mediaTempoHoras = cont > 0 ? somaHoras / cont : 0;
+
+            // Função auxiliar para formatar em "X dias e Y horas" ou "Z min"
+            // (Você deve ter uma função similar no seu controller, aqui simulamos a formatação)
+            string mediaTempoFormatada = mediaTempoHoras == 0 ? "N/A" : FormatarTempo(mediaTempoHoras);
+
+            // Retorna os dados como JSON
+            return Json(new
+            {
+                totalDenuncias = totalDenuncias, // Geral
+                denunciasMes = denunciasMes,     // Do Mês (no ano selecionado)
+                mediaTempoDias = mediaTempoFormatada // Formatada
+            });
         }
 
         [Authorize(Roles = "Aluno")]
@@ -1324,6 +1479,46 @@ namespace Farol_Seguro.Controllers
 
             return RedirectToAction(nameof(MinhasNotificacoes));
         }
+
+        // Exemplo de como implementar a Action no seu Controller
+        [HttpPost] // <-- OBRIGATÓRIO: Garante que só aceita o método POST
+        [ValidateAntiForgeryToken] // Recomendado para segurança
+        public async Task<IActionResult> MarcarComoLida(int idNotificacao)
+        {
+            // 1. Busca a notificação pelo ID
+            // Certifique-se de incluir a referência ao modelo de Notificação
+            var notificacao = await _context.Notificacao
+                                            .FirstOrDefaultAsync(n => n.Id_Notificacao == idNotificacao);
+
+            if (notificacao == null)
+            {
+                // Se a notificação não for encontrada, retorna 404
+                return NotFound();
+            }
+
+            // 2. Verifica se já está lida para evitar processamento desnecessário (opcional)
+            if (!notificacao.Lida)
+            {
+                // 3. Marca a propriedade 'Lida' como true
+                notificacao.Lida = true;
+
+                try
+                {
+                    // 4. Salva as alterações no banco de dados
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    // Trate erros de concorrência se necessário
+                    // Para simplicidade, apenas logamos e continuamos/retornamos
+                }
+            }
+
+            // 5. Redireciona o usuário de volta para a lista de notificações
+            // Substitua "MinhasNotificacoes" pelo nome real da sua Action que exibe a lista.
+            return RedirectToAction(nameof(MinhasNotificacoes));
+        }
+        
 
     }
 }

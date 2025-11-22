@@ -2,10 +2,14 @@
 
 @{
     ViewData["Title"] = "Editar Denúncia";
-    bool isAluno = User.IsInRole("Aluno");
+
+    bool bloqueado =
+        Model.Status_Denuncia == "Respondida" ||
+        Model.Status_Denuncia == "Resolvida" ||
+        Model.Status_Denuncia == "Encerrada" ||
+        Model.Status_Denuncia == "Pendente";
 }
 
-<!-- CSS RESTAURADO -->
 <link href="~/css/header.css" rel="stylesheet" />
 
 <h2 class="mb-4">Editar Denúncia #@Model.Id_Denuncia</h2>
@@ -25,62 +29,71 @@ else if (TempData["MensagemErro"] != null)
     </div>
 }
 
-<form asp-action="Editar" enctype="multipart/form-data">
-    <input type="hidden" asp-for="Id_Denuncia" />
+@if (bloqueado)
+{
+    <div class="alert alert-warning">
+        Esta denúncia está com status <strong>@Model.Status_Denuncia</strong> e não pode ser editada.
+    </div>
+}
 
+<form asp-action="Editar" enctype="multipart/form-data" method="post">
+    @* Campos ocultos essenciais *@
+    <input type="hidden" asp-for="Id_Denuncia" />
+    <input type="hidden" asp-for="Id_Aluno" />
+    <input type="hidden" asp-for="Status_Denuncia" />
+
+    <!-- Título -->
     <div class="mb-3">
         <label asp-for="Titulo_Denuncia" class="form-label"></label>
-        <input asp-for="Titulo_Denuncia" class="form-control" />
+        <input asp-for="Titulo_Denuncia" class="form-control"
+               readonly="@(bloqueado ? "readonly" : null)" />
     </div>
 
+    <!-- Descrição -->
     <div class="mb-3">
         <label asp-for="Descricao_Denuncia" class="form-label"></label>
-        <textarea asp-for="Descricao_Denuncia" class="form-control"></textarea>
+        <textarea asp-for="Descricao_Denuncia" class="form-control" rows="4"
+                  readonly="@(bloqueado ? "readonly" : null)"></textarea>
     </div>
 
+    <!-- Categoria -->
     <div class="mb-3">
         <label asp-for="Categoria_Denuncia" class="form-label"></label>
-        <input asp-for="Categoria_Denuncia" class="form-control" />
+        <input asp-for="Categoria_Denuncia" class="form-control"
+               readonly="@(bloqueado ? "readonly" : null)" />
     </div>
 
-    @if (!isAluno)
-    {
-        <div class="mb-3">
-            <label asp-for="Id_Aluno" class="form-label"></label>
-            <select asp-for="Id_Aluno" class="form-select" asp-items="ViewBag.Id_Aluno"></select>
-        </div>
-
-        <div class="mb-3">
-            <label asp-for="Status_Denuncia" class="form-label"></label>
-            <select asp-for="Status_Denuncia" class="form-select" required>
-                <option value="Aberta">Aberta</option>
-                <option value="Pendente">Pendente</option>
-                <option value="Em Análise">Em Análise</option>
-                <option value="Respondida">Respondida</option>
-                <option value="Resolvida">Resolvida</option>
-                <option value="Encerrada">Encerrada</option>
-            </select>
-        </div>
-    }
-    else
-    {
-        <input type="hidden" asp-for="Id_Aluno" />
-        <input type="hidden" asp-for="Status_Denuncia" />
-    }
-
+    <!-- Denúncia anônima (checkbox) -->
     <div class="form-check mb-3">
-        <input asp-for="DenunciaAnonima" class="form-check-input" />
+        <input asp-for="DenunciaAnonima" class="form-check-input"
+               disabled="@(bloqueado ? "disabled" : null)" />
         <label asp-for="DenunciaAnonima" class="form-check-label"></label>
+
+        @* Se estiver desabilitado, garantir que o valor venha no POST *@
+        @if (bloqueado)
+        {
+            <input type="hidden" name="DenunciaAnonima" value="@(Model.DenunciaAnonima.ToString().ToLower())" />
+        }
     </div>
 
+    <!-- Escola -->
     <div class="mb-3">
         <label asp-for="Id_Escola" class="form-label"></label>
-        <select asp-for="Id_Escola" class="form-select" asp-items="ViewBag.Id_Escola"></select>
+        <select asp-for="Id_Escola" class="form-select" asp-items="ViewBag.Id_Escola"
+                disabled="@(bloqueado ? "disabled" : null)">
+        </select>
+
+        @* Se desabilitado, enviar valor via hidden para o POST *@
+        @if (bloqueado)
+        {
+            <input type="hidden" name="Id_Escola" value="@Model.Id_Escola" />
+        }
     </div>
 
     <hr />
 
-    <h5>Anexos Atuais</h5>
+    <!-- ANEXOS -->
+    <h5 class="mt-3">Anexos Enviados</h5>
 
     @if (Model.Anexos != null && Model.Anexos.Any())
     {
@@ -89,12 +102,16 @@ else if (TempData["MensagemErro"] != null)
             {
                 <li class="list-group-item d-flex justify-content-between align-items-center" id="anexo_@anexo.Id_Anexo">
                     <a asp-action="DownloadAnexo" asp-route-idAnexo="@anexo.Id_Anexo">
-                        <i class="fas fa-file-alt me-2"></i> @(anexo.NomeOriginal_Anexo ?? "Arquivo Anexado")
+                        <i class="fas fa-file-alt me-2"></i> @(anexo.NomeOriginal_Anexo ?? "Arquivo")
                     </a>
 
-                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removerAnexo(@anexo.Id_Anexo)">
-                        <i class="fas fa-times"></i> Remover
-                    </button>
+                    @if (!bloqueado)
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                onclick="removerAnexo(@anexo.Id_Anexo)">
+                            <i class="fas fa-trash"></i> Remover
+                        </button>
+                    }
                 </li>
             }
         </ul>
@@ -104,49 +121,80 @@ else if (TempData["MensagemErro"] != null)
         <p class="text-muted">Nenhum anexo enviado anteriormente.</p>
     }
 
-    <div class="mb-3">
-        <label class="form-label">Adicionar novos anexos</label>
-        <input type="file" name="novosAnexosArquivos" class="form-control" multiple />
-    </div>
+    @if (!bloqueado)
+    {
+        <div class="mb-3">
+            <label class="form-label">Adicionar novos anexos</label>
+            <input type="file" name="novosAnexosArquivos" class="form-control" multiple />
+        </div>
+    }
 
     <hr />
 
-    <h5>Testemunhas</h5>
+    <!-- TESTEMUNHAS -->
+    <h5 class="mt-3">Testemunhas</h5>
+
     <div id="testemunhasContainer">
-        @if (Model.DenunciaTestemunhas != null)
+        @if (Model.DenunciaTestemunhas != null && Model.DenunciaTestemunhas.Any())
         {
             foreach (var dt in Model.DenunciaTestemunhas)
             {
-                <div class="mb-2">
-                    <input type="text" name="Nome_Testemunha" value="@dt.Testemunha.Nome_Testemunha" class="form-control mb-1" placeholder="Nome" />
-                    <input type="text" name="Telefone_Testemunha" value="@dt.Testemunha.Telefone_Testemunha" class="form-control" placeholder="Telefone" />
+                <div class="border rounded p-2 mb-2">
+                    <input type="text" name="Nome_Testemunha"
+                           value="@dt.Testemunha.Nome_Testemunha"
+                           class="form-control mb-1"
+                           placeholder="Nome"
+                           readonly="@(bloqueado ? "readonly" : null)" />
+
+                    <input type="text" name="Telefone_Testemunha"
+                           value="@dt.Testemunha.Telefone_Testemunha"
+                           class="form-control"
+                           placeholder="Telefone"
+                           readonly="@(bloqueado ? "readonly" : null)" />
                 </div>
             }
         }
     </div>
 
-    <button type="button" class="btn btn-secondary mb-3" onclick="adicionarTestemunha()">Adicionar Testemunha</button>
+    @if (!bloqueado)
+    {
+        <button type="button" onclick="adicionarTestemunha()"
+                class="btn btn-secondary mb-3">
+            + Adicionar Testemunha
+        </button>
+    }
 
-    <div class="mt-4">
-        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Salvar Alterações</button>
-        <a asp-action="Detalhes" asp-route-id="@Model.Id_Denuncia" class="btn btn-outline-secondary">Cancelar</a>
+    <!-- BOTÕES -->
+    <div class="mt-4 d-flex gap-2">
+        <button type="submit" class="btn btn-primary"
+                disabled="@(bloqueado ? "disabled" : null)">
+            <i class="fas fa-save"></i> Salvar Alterações
+        </button>
+
+        <a asp-action="Detalhes" asp-route-id="@Model.Id_Denuncia"
+           class="btn btn-outline-secondary">
+            Voltar
+        </a>
     </div>
 </form>
 
 <script>
     function adicionarTestemunha() {
         var container = document.getElementById("testemunhasContainer");
+
         var div = document.createElement("div");
-        div.classList.add("mb-2");
+        div.classList.add("border", "rounded", "p-2", "mb-2");
+
         div.innerHTML = `
             <input type="text" name="Nome_Testemunha" class="form-control mb-1" placeholder="Nome" />
             <input type="text" name="Telefone_Testemunha" class="form-control" placeholder="Telefone" />
         `;
+
         container.appendChild(div);
     }
 
     function removerAnexo(idAnexo) {
-        if (!confirm("Tem certeza que deseja remover este anexo?")) return;
+        if (!confirm('Tem certeza que deseja remover este anexo?')) return;
 
         fetch(`/Denuncia/RemoverAnexo/${idAnexo}`, {
             method: 'POST',
@@ -154,15 +202,11 @@ else if (TempData["MensagemErro"] != null)
                 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
             }
         })
-            .then(r => {
-                if (!r.ok) throw r;
-                document.getElementById(`anexo_${idAnexo}`).remove();
-                alert("Anexo removido!");
-            })
-            .catch(() => alert("Erro ao remover o anexo."));
+        .then(r => {
+            if (!r.ok) throw r;
+            document.getElementById(`anexo_${idAnexo}`).remove();
+            alert('Anexo removido!');
+        })
+        .catch(() => alert('Erro ao remover o anexo.'));
     }
 </script>
-
-<!-- JS RESTAURADOS -->
-<script src="~/js/menu_dropdown.js"></script>
-<script src="~/js/open-modal.js"></script>

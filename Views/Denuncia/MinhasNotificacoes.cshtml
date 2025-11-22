@@ -3,35 +3,9 @@
 @{
     ViewData["Title"] = "Minhas Notificações";
 }
+<hr />
 
 <link href="~/css/header.css" rel="stylesheet" />
-
-<h2 class="mt-4 mb-4">@ViewData["Title"]</h2>
-
-@* =======================================================
-    BLOCO PARA EXIBIR MENSAGENS DE ALERTA (SUCESSO/ERRO)
-======================================================== *@
-@{
-    if (TempData["MensagemSucesso"] != null)
-    {
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <strong>Sucesso!</strong> @TempData["MensagemSucesso"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    }
-    else if (TempData["MensagemErro"] != null)
-    {
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <strong>Erro!</strong> @TempData["MensagemErro"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    }
-}
-@* =======================================================
-    FIM DO BLOCO DE MENSAGENS
-======================================================== *@
-
-<hr />
 
 @if (!Model.Any())
 {
@@ -41,35 +15,53 @@
 }
 else
 {
+    <div class="d-flex justify-content-end mb-3">
+        <a asp-controller="Denuncia" asp-action="LimparTodas" class="btn btn-outline-danger btn-sm"
+           onclick="return confirm('Tem certeza que deseja limpar TODAS as suas notificações? Esta ação não pode ser desfeita.');">
+            <i class="fas fa-trash-alt"></i> Limpar Todas
+        </a>
+    </div>
     <div class="list-group">
         @foreach (var item in Model)
         {
             // Define classes de estilo
             string itemClass = item.Lida ? "list-group-item-light" : "list-group-item-primary";
-            string badgeClass = item.Lida ? "text-secondary" : "bg-primary text-white"; // Adicionado text-white para contraste
+            string badgeClass = item.Lida ? "text-secondary" : "bg-primary text-white";
 
-            @* 🚨 Ponto Importante: Confirme se o asp-controller está correto aqui *@
-            <a asp-controller="Denuncia" asp-action="Detalhes" asp-route-id="@item.Id_Denuncia" class="list-group-item list-group-item-action @itemClass mb-2 border rounded-3">
-                <div class="d-flex w-100 justify-content-between">
-                    <h5 class="mb-1">
-                        @Html.DisplayFor(modelItem => item.Mensagem)
-                    </h5>
-                    <span class="badge @badgeClass p-2">
-                        @if (!item.Lida)
-                        {
-                            <i class="fas fa-exclamation-circle">Nova</i>
-                        }
-                        else
-                        {
-                            <i class="fas fa-check">Lida</i>
-                        }
-                    </span>
+            <div class="d-flex align-items-stretch mb-2 border rounded-3 @itemClass">
+
+                @* O link de acesso à Denúncia ocupa a maior parte do espaço e mantém a função de marcar como lida (se você a implementou) *@
+                <a asp-controller="Denuncia" asp-action="Detalhes" asp-route-id="@item.Id_Denuncia" class="list-group-item-action flex-grow-1 p-3">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1">
+                            @Html.DisplayFor(modelItem => item.Mensagem)
+                        </h5>
+                        <span class="badge @badgeClass p-2 flex-shrink-0">
+                            @if (!item.Lida)
+                            {
+                                <i class="fas fa-exclamation-circle"> Nova</i>
+                            }
+                            else
+                            {
+                                <i class="fas fa-check"> Lida</i>
+                            }
+                        </span>
+                    </div>
+                    <p class="mb-1">
+                        Denúncia #@(item.Id_Denuncia): Status Atual: <strong>@(item.Denuncia?.Status_Denuncia ?? "N/A")</strong>
+                    </p>
+                    <small class="text-muted">Recebida em: @item.DataCriacao.ToString("dd/MM/yyyy HH:mm")</small>
+                </a>
+
+                <div class="d-flex align-items-center me-2">
+                    <a asp-controller="Denuncia" asp-action="Remover" asp-route-idNotificacao="@item.Id_Notificacao"
+                       class="btn btn-outline-danger btn-sm"
+                       onclick="return confirm('Tem certeza que deseja remover esta notificação?');"
+                       title="Remover Notificação">
+                        <i class="fas fa-times"></i>
+                    </a>
                 </div>
-                <p class="mb-1">
-                    Denúncia #@(item.Id_Denuncia): Status Atual: <strong>@(item.Denuncia?.Status_Denuncia ?? "N/A")</strong>
-                </p>
-                <small class="text-muted">Recebida em: @item.DataCriacao.ToString("dd/MM/yyyy HH:mm")</small>
-            </a>
+            </div>
         }
     </div>
 }

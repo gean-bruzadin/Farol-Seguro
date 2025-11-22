@@ -1,4 +1,5 @@
-﻿@{
+﻿@using System.Text.Json;
+@{
     ViewData["Title"] = "Dashboard de Denúncias";
 
     int[] mensalCriadas = ((int[])ViewBag.MensalCriadas) ?? new int[12];
@@ -90,6 +91,7 @@
                 <div class="card-footer"><small>Desde o início da análise até a conclusão</small></div>
             </div>
         </div>
+     </div> @* Fechando a div.row que estava aberta  *@
 
     <div class="row mt-4">
         <div class="col-md-10 offset-md-1">
@@ -115,9 +117,9 @@
 
         <script>
             // Os arrays de horas permanecem como variáveis globais
-            var mensalCriadas = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(mensalCriadas));
-            var mensalResolvidas = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(mensalResolvidas));
-            var mediaHorasPorMes = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(mediaHorasPorMes)); // Média em horas
+            var mensalCriadas = @Html.Raw(JsonSerializer.Serialize(mensalCriadas));
+            var mensalResolvidas = @Html.Raw(JsonSerializer.Serialize(mensalResolvidas));
+            var mediaHorasPorMes = @Html.Raw(JsonSerializer.Serialize(mediaHorasPorMes)); // Média em horas
 
             const labelsMeses = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
@@ -126,43 +128,46 @@
                 return arr.map(h => +(h / 24).toFixed(1));
             }
 
-            //  NOVO: Função para formatar o total de horas em Dias e Horas
+            // NOVO: Função para formatar o total de horas em Dias e Horas
             function formatarHorasParaDiasHoras(totalHoras) {
-                if (totalHoras <= 0) return "0 horas";
+                if (totalHoras <= 0) return "N/A";
 
                 const horasPorDia = 24;
+                const minutosPorHora = 60;
+                
+                // Conversão para milissegundos, depois para TimeSpan (simulado)
+                const tempoMs = totalHoras * 3600 * 1000;
+                const tempo = new Date(tempoMs);
 
-                // Cálculo
-                const dias = Math.floor(totalHoras / horasPorDia);
-                // Arredondamos a hora restante para evitar "5.999 horas"
+                // Cálculo dos componentes (mais preciso)
+                const diasTotal = Math.floor(totalHoras / horasPorDia);
                 const horasRestantes = Math.round(totalHoras % horasPorDia);
-
+                
                 let resultado = "";
 
-                if (dias > 0) {
-                    resultado += `${dias} dia${dias > 1 ? "s" : ""}`;
+                if (diasTotal > 0) {
+                    resultado += `${diasTotal} dia${diasTotal > 1 ? "s" : ""}`;
                 }
 
                 if (horasRestantes > 0) {
-                    if (dias > 0) {
+                    if (diasTotal > 0) {
                         resultado += " e ";
                     }
                     resultado += `${horasRestantes} hora${horasRestantes > 1 ? "s" : ""}`;
                 }
-
+                
                 // Se a duração for muito curta (menos de 1 hora), mostra minutos se for o caso
-                if (dias === 0 && horasRestantes === 0 && totalHoras > 0) {
-                    const minutos = Math.round(totalHoras * 60);
+                if (diasTotal === 0 && horasRestantes === 0 && totalHoras > 0) {
+                    const minutos = Math.round(totalHoras * minutosPorHora);
                     return minutos > 0 ? `${minutos} min` : "0 min";
                 }
 
-                return resultado || "0 horas";
+                return resultado.trim() || "0 horas";
             }
 
             // --- CHART CRIADAS/RESOLVIDAS (Sem alterações no Tooltip) ---
             const ctx1 = document.getElementById('chartCriadasResolvidas').getContext('2d');
 
-            // ... (Definições de gradCriadas e gradResolvidas) ...
             const gradCriadas = ctx1.createLinearGradient(0,0,0,400);
             gradCriadas.addColorStop(0, 'rgba(13,110,253,0.28)');
             gradCriadas.addColorStop(1, 'rgba(13,110,253,0.02)');
@@ -246,10 +251,6 @@
                                     label += formatarHorasParaDiasHoras(horasOriginais);
                                     return label;
                                 },
-                                 // OPCIONAL: Mudar o título do eixo Y (se for necessário manter 'dias' nele)
-                                 // title: (tooltipItems) => {
-                                 //     return labelsMeses[tooltipItems[0].dataIndex];
-                                 // }
                             }
                         }
                     }
@@ -260,23 +261,33 @@
             document.getElementById("btnAtualizar").addEventListener("click", async () => {
                 const ano = document.getElementById("selectAno").value;
 
-                const res = await fetch(`/Denuncia/GetDashboardData?ano=${ano}`);
-                const data = await res.json();
+                // Aqui você pode adicionar um loading indicator
+                
+                try {
+                    const res = await fetch(`/Denuncia/GetDashboardData?ano=${ano}`);
+                    if (!res.ok) throw new Error("Erro ao carregar dados do dashboard.");
+                    const data = await res.json();
 
-                //  CRÍTICO: Atualiza a variável global mediaHorasPorMes antes de atualizar o gráfico
-                mediaHorasPorMes = data.mediaHoras;
+                    // CRÍTICO: Atualiza a variável global mediaHorasPorMes antes de atualizar o gráfico
+                    // Isso garante que o tooltip use os dados corretos para o novo ano.
+                    mediaHorasPorMes = data.mediaHoras; 
 
-                // Atualizar gráficos Criadas/Resolvidas
-                chartCriadas.data.datasets[0].data = data.criadas;
-                chartCriadas.data.datasets[1].data = data.resolvidas;
-                chartCriadas.update();
+                    // Atualizar gráficos Criadas/Resolvidas
+                    chartCriadas.data.datasets[0].data = data.criadas;
+                    chartCriadas.data.datasets[1].data = data.resolvidas;
+                    chartCriadas.update();
 
-                // Atualizar barras do gráfico de Tempo de Resolução (continua em dias decimais para a altura)
-                chartTempo.data.datasets[0].data = horasToDiasArray(data.mediaHoras);
-                chartTempo.update();
+                    // Atualizar barras do gráfico de Tempo de Resolução (continua em dias decimais para a altura)
+                    chartTempo.data.datasets[0].data = horasToDiasArray(data.mediaHoras);
+                    chartTempo.update();
 
-                document.getElementById("tituloAno").innerText = ano;
-                document.getElementById("tituloAno2").innerText = ano;
+                    document.getElementById("tituloAno").innerText = ano;
+                    document.getElementById("tituloAno2").innerText = ano;
+                } catch (error) {
+                    console.error(error);
+                    alert("Ocorreu um erro ao carregar os dados. Verifique a console para detalhes.");
+                }
+                // Remover o loading indicator
             });
 
             // --- LÓGICA DE EXPORTAÇÃO (Mantida) ---

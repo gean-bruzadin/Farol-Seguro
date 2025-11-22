@@ -632,33 +632,36 @@ namespace Farol_Seguro.Controllers
         // Dentro do método [HttpPost] AlterarStatus
         public async Task<IActionResult> AlterarStatus(int id, string novoStatus)
         {
-            var denuncia = await _context.Denuncias.FindAsync(id);
+            // 1. Buscar a Denúncia.
+            var denuncia = await _context.Denuncias
+                .FirstOrDefaultAsync(d => d.Id_Denuncia == id);
+
             if (denuncia == null) return NotFound();
 
             string statusAntigo = denuncia.Status_Denuncia;
 
-            // 1. OBTENÇÃO DA CHAVE DO USUÁRIO
-            if (!int.TryParse(User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier), out int idUsuario))
+            // 1. OBTENÇÃO DA CHAVE DO USUÁRIO (Funcionário/Admin)
+            if (!int.TryParse(User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier), out int idUsuarioFuncionario))
             {
-                // Se a autenticação falhar de forma crítica, é melhor retornar um erro.
                 TempData["MensagemErro"] = "Falha na autenticação do usuário. Log não registrado.";
                 return RedirectToAction("index", new { id = id });
             }
 
-            // 2. BUSCAR USUÁRIO E O NÍVEL (CHAVE ESTRATÉGICA)
+            // 2. BUSCAR USUÁRIO E O NÍVEL (Funcionário/Admin)
             var usuario = await _context.Usuarios
                 .Include(u => u.Nivel)
-                .FirstOrDefaultAsync(u => u.Id_Usuario == idUsuario);
+                .FirstOrDefaultAsync(u => u.Id_Usuario == idUsuarioFuncionario);
 
-            if (usuario == null || usuario.Nivel == null || usuario.Id_Nivel == 1) // ID 1 é Aluno, que não deve mudar status.
+            if (usuario == null || usuario.Nivel == null || usuario.Id_Nivel == 1) // ID 1 é Aluno.
             {
                 TempData["MensagemErro"] = "Somente funcionários/administradores podem alterar o status.";
                 return RedirectToAction("index", new { id = id });
             }
 
-            // 3. GRAVAR O NOVO REGISTRO DE LOG
+            // 3. GRAVAR O NOVO REGISTRO DE LOG E CRIAR NOTIFICAÇÃO
             if (statusAntigo != novoStatus)
             {
+                // 3.1. CRIAÇÃO DO LOG DE STATUS (Lógica existente)
                 var logEntry = new LogStatus
                 {
                     Id_Denuncia = id,
@@ -670,19 +673,40 @@ namespace Farol_Seguro.Controllers
                 };
                 _context.LogStatus.Add(logEntry);
 
-                // 4. ATUALIZAR STATUS E SALVAR
+                // 3.2. CRIAÇÃO DA NOTIFICAÇÃO PARA O ALUNO 🔔
+                if (denuncia.Id_Aluno.HasValue)
+                {
+                    // O caminho completo para a página de detalhes da denúncia
+                    var urlDestino = $"/Denuncia/Detalhes/{denuncia.Id_Denuncia}";
+
+                    var novaNotificacao = new Notificacao
+                    {
+                        Id_Aluno = denuncia.Id_Aluno.Value, // O ID do Aluno é quem recebe a notificação
+                        Id_Denuncia = denuncia.Id_Denuncia,
+                        Mensagem = $"O status da sua denúncia #{denuncia.Id_Denuncia} foi atualizado para: {novoStatus}.",
+                        DataCriacao = DateTime.Now,
+                        Lida = false, // O aluno precisa ler!
+                        UrlDestino = urlDestino // **CAMPO OBRIGATÓRIO ADICIONADO AQUI**
+                    };
+                    _context.Notificacao.Add(novaNotificacao);
+                }
+                else
+                {
+                    // Lidar com denúncia sem aluno associado, se necessário.
+                }
+
+                // 4. ATUALIZAR STATUS
                 denuncia.Status_Denuncia = novoStatus;
                 _context.Denuncias.Update(denuncia);
 
-                // Salva a alteração da denúncia E o novo registro de log de uma vez
-                await _context.SaveChangesAsync();
+                // 5. SALVAR TUDO: Denúncia, LogStatus e Notificação
+                await _context.SaveChangesAsync(); // Deve funcionar agora que 'UrlDestino' está preenchido.
 
-                TempData["MensagemSucesso"] = $"Status da denúncia alterado para '{novoStatus}' e log registrado.";
+                TempData["MensagemSucesso"] = $"Status da denúncia alterado para '{novoStatus}', log registrado e **notificação enviada ao aluno**.";
             }
 
             return RedirectToAction("index", new { id = id });
         }
-
         // ======================================================= MINHAS DENÚNCIAS / NOTIFICAÇÕES =======================================================
 
         [Authorize(Roles = "Aluno")]
@@ -738,13 +762,16 @@ namespace Farol_Seguro.Controllers
 
             // Totais
             var totalDenuncias = await _context.Denuncias.CountAsync();
+            // A denúncia com status "Aberta" na imagem deve ser contabilizada aqui se não tiver um tratamento específico
             var totalPendentes = await _context.Denuncias.CountAsync(d => d.Status_Denuncia == "Pendente");
             var denunciasMes = await _context.Denuncias.CountAsync(d =>
                 d.DataCriacao_Denuncia.Month == DateTime.Now.Month && d.DataCriacao_Denuncia.Year == DateTime.Now.Year);
 
             // Categorias
+            var statusFinais = new[] { "Resolvida", "Encerrada", "Concluída" };
+
             var totalResolvidas = await _context.Denuncias.CountAsync(d =>
-                d.Status_Denuncia == "Resolvida" || d.Status_Denuncia == "Encerrada" || d.Status_Denuncia == "Concluída");
+                statusFinais.Contains(d.Status_Denuncia));
 
             var totalEmAnalise = await _context.Denuncias.CountAsync(d =>
                 d.Status_Denuncia == "Em Análise" || d.Status_Denuncia == "Respondida");
@@ -763,17 +790,39 @@ namespace Farol_Seguro.Controllers
                 .Select(g => new { Mes = g.Key, Quantidade = g.Count() })
                 .ToListAsync();
 
-            // Logs finais (usando LogStatus)
-            var statusFinais = new[] { "Resolvida", "Encerrada", "Concluída" };
+            // Logs de status finais no ano
             var logsFinal = await _context.LogStatus
                 .Where(l => statusFinais.Contains(l.Status_Novo) && l.Timestamp.Year == ano)
                 .ToListAsync();
 
-            // resolvidas por mês (distinct por denuncia)
-            var resolvidasPorMes = logsFinal
-                .GroupBy(l => l.Timestamp.Month)
-                .Select(g => new { Mes = g.Key, Quantidade = g.Select(x => x.Id_Denuncia).Distinct().Count() })
+            // ****************************************************
+            // CORREÇÃO FINAL APLICADA AQUI: Contagem de resolvidas por mês
+            // Filtra pelo último log final, mas SÓ SE O STATUS ATUAL for um status final.
+            // ****************************************************
+            // 1. Encontrar o ÚLTIMO log de status final para cada denúncia no ano
+            var ultimosLogsDeResolucao = logsFinal
+                .GroupBy(l => l.Id_Denuncia)
+                .Select(g => g.OrderByDescending(l => l.Timestamp).FirstOrDefault())
+                .Where(l => l != null)
                 .ToList();
+
+            // 2. Filtrar os IDs de denúncias que estão ATUALMENTE em um status final
+            var idsAtualmenteResolvidas = await _context.Denuncias
+                .Where(d => statusFinais.Contains(d.Status_Denuncia))
+                .Select(d => d.Id_Denuncia)
+                .ToListAsync();
+
+            // 3. Filtrar o conjunto de logs de resolução para incluir apenas aquelas que permanecem resolvidas
+            var logsResolvidasAtuais = ultimosLogsDeResolucao
+                .Where(l => idsAtualmenteResolvidas.Contains(l.Id_Denuncia))
+                .ToList();
+
+            // 4. Agrupar por Mês usando apenas os logs das denúncias que ainda estão resolvidas
+            var resolvidasPorMes = logsResolvidasAtuais
+                .GroupBy(l => l.Timestamp.Month)
+                .Select(g => new { Mes = g.Key, Quantidade = g.Count() })
+                .ToList();
+            // ****************************************************
 
             // arrays 12 meses
             int[] arrCriadas = Enumerable.Range(1, 12).Select(m => 0).ToArray();
@@ -785,6 +834,8 @@ namespace Farol_Seguro.Controllers
             double[] mediaHorasPorMes = new double[12];
 
             // ids que tiveram final no ano
+            // OBS: Para a média, é mais comum contar o tempo de TODAS que atingiram a conclusão, 
+            // mesmo que reabertas, mas manteremos o escopo original.
             var idsResolvidasNoAno = logsFinal.Select(l => l.Id_Denuncia).Distinct().ToList();
 
             // buscar logs completos só para esses ids
@@ -795,6 +846,8 @@ namespace Farol_Seguro.Controllers
 
             for (int mes = 1; mes <= 12; mes++)
             {
+                // Aqui, o cálculo da média de tempo continua usando todas as que foram concluídas no mês
+                // (idsNoMes), independentemente do status atual, pois mede o desempenho do processo de conclusão.
                 var idsNoMes = logsFinal.Where(l => l.Timestamp.Month == mes).Select(l => l.Id_Denuncia).Distinct().ToList();
                 double somaHoras = 0;
                 int cont = 0;
@@ -901,10 +954,29 @@ namespace Farol_Seguro.Controllers
                 .Where(l => statusFinais.Contains(l.Status_Novo) && l.Timestamp.Year == ano)
                 .ToListAsync();
 
-            var resolvidasPorMes = logsFinal
-                .GroupBy(l => l.Timestamp.Month)
-                .Select(g => new { Mes = g.Key, Quantidade = g.Select(x => x.Id_Denuncia).Distinct().Count() })
+            // ****************************************************
+            // CORREÇÃO FINAL APLICADA AQUI: Contagem de resolvidas por mês
+            // ****************************************************
+            var ultimosLogsDeResolucao = logsFinal
+                .GroupBy(l => l.Id_Denuncia)
+                .Select(g => g.OrderByDescending(l => l.Timestamp).FirstOrDefault())
+                .Where(l => l != null)
                 .ToList();
+
+            var idsAtualmenteResolvidas = await _context.Denuncias
+                .Where(d => statusFinais.Contains(d.Status_Denuncia))
+                .Select(d => d.Id_Denuncia)
+                .ToListAsync();
+
+            var logsResolvidasAtuais = ultimosLogsDeResolucao
+                .Where(l => idsAtualmenteResolvidas.Contains(l.Id_Denuncia))
+                .ToList();
+
+            var resolvidasPorMes = logsResolvidasAtuais
+                .GroupBy(l => l.Timestamp.Month)
+                .Select(g => new { Mes = g.Key, Quantidade = g.Count() })
+                .ToList();
+            // ****************************************************
 
             // Inicializar arrays completos
             int[] arrCriadas = Enumerable.Range(1, 12).Select(m => 0).ToArray();
@@ -978,10 +1050,29 @@ namespace Farol_Seguro.Controllers
                 .Where(l => statusFinais.Contains(l.Status_Novo) && l.Timestamp.Year == ano)
                 .ToListAsync();
 
-            var resolvidasPorMes = logsFinal
-                .GroupBy(l => l.Timestamp.Month)
-                .Select(g => new { Mes = g.Key, Quantidade = g.Select(x => x.Id_Denuncia).Distinct().Count() })
+            // ****************************************************
+            // CORREÇÃO FINAL APLICADA AQUI: Contagem de resolvidas por mês
+            // ****************************************************
+            var ultimosLogsDeResolucao = logsFinal
+                .GroupBy(l => l.Id_Denuncia)
+                .Select(g => g.OrderByDescending(l => l.Timestamp).FirstOrDefault())
+                .Where(l => l != null)
                 .ToList();
+
+            var idsAtualmenteResolvidas = await _context.Denuncias
+                .Where(d => statusFinais.Contains(d.Status_Denuncia))
+                .Select(d => d.Id_Denuncia)
+                .ToListAsync();
+
+            var logsResolvidasAtuais = ultimosLogsDeResolucao
+                .Where(l => idsAtualmenteResolvidas.Contains(l.Id_Denuncia))
+                .ToList();
+
+            var resolvidasPorMes = logsResolvidasAtuais
+                .GroupBy(l => l.Timestamp.Month)
+                .Select(g => new { Mes = g.Key, Quantidade = g.Count() })
+                .ToList();
+            // ****************************************************
 
             int[] arrCriadas = Enumerable.Range(1, 12).Select(m => 0).ToArray();
             int[] arrResolvidas = Enumerable.Range(1, 12).Select(m => 0).ToArray();
@@ -1020,10 +1111,29 @@ namespace Farol_Seguro.Controllers
                 .Where(l => statusFinais.Contains(l.Status_Novo) && l.Timestamp.Year == ano)
                 .ToListAsync();
 
-            var resolvidasPorMes = logsFinal
-                .GroupBy(l => l.Timestamp.Month)
-                .Select(g => new { Mes = g.Key, Quantidade = g.Select(x => x.Id_Denuncia).Distinct().Count() })
+            // ****************************************************
+            // CORREÇÃO FINAL APLICADA AQUI: Contagem de resolvidas por mês
+            // ****************************************************
+            var ultimosLogsDeResolucao = logsFinal
+                .GroupBy(l => l.Id_Denuncia)
+                .Select(g => g.OrderByDescending(l => l.Timestamp).FirstOrDefault())
+                .Where(l => l != null)
                 .ToList();
+
+            var idsAtualmenteResolvidas = await _context.Denuncias
+                .Where(d => statusFinais.Contains(d.Status_Denuncia))
+                .Select(d => d.Id_Denuncia)
+                .ToListAsync();
+
+            var logsResolvidasAtuais = ultimosLogsDeResolucao
+                .Where(l => idsAtualmenteResolvidas.Contains(l.Id_Denuncia))
+                .ToList();
+
+            var resolvidasPorMes = logsResolvidasAtuais
+                .GroupBy(l => l.Timestamp.Month)
+                .Select(g => new { Mes = g.Key, Quantidade = g.Count() })
+                .ToList();
+            // ****************************************************
 
             int[] arrCriadas = Enumerable.Range(1, 12).Select(m => 0).ToArray();
             int[] arrResolvidas = Enumerable.Range(1, 12).Select(m => 0).ToArray();
@@ -1031,6 +1141,7 @@ namespace Farol_Seguro.Controllers
             foreach (var r in resolvidasPorMes) arrResolvidas[r.Mes - 1] = r.Quantidade;
 
             // Gera planilha
+            // (O restante do código de exportação de Excel permanece o mesmo)
             using (var workbook = new XLWorkbook())
             {
                 var ws = workbook.Worksheets.Add("Denúncias");
@@ -1054,7 +1165,7 @@ namespace Farol_Seguro.Controllers
             }
         }
 
-        // ... (Seus outros métodos privados: RegistrarLogStatusAsync e CalcularMediaTempoResolucaoAsync) ...
+        // ... (Outros métodos: RegistrarLogStatusAsync e CalcularMediaTempoResolucaoAsync) ...
 
         private async Task RegistrarLogStatusAsync(int idDenuncia, string novoStatus, string statusAnterior)
         {
@@ -1064,7 +1175,7 @@ namespace Farol_Seguro.Controllers
                 return; // não encontrou o ID
             }
 
-            // 2. Buscar usuário na tabela Usuarios
+            // 2. Buscar usuário na tabela Usuarios (incluindo o Nivel)
             var usuario = await _context.Usuarios
                 .Include(u => u.Nivel)
                 .FirstOrDefaultAsync(u => u.Id_Usuario == idUsuario);
@@ -1079,20 +1190,21 @@ namespace Farol_Seguro.Controllers
             // 4. Registrar log se mudou o status
             if (statusAnterior != novoStatus)
             {
-                // O tipo LogStatus deve ser o seu modelo de LogStatus
-                var logEntry = new
-                { /* Substituir por LogStatus */
+                // 🚨 CORREÇÃO APLICADA: Instanciar o objeto LogStatus
+                var logEntry = new LogStatus
+                {
                     Id_Denuncia = idDenuncia,
                     Status_Anterior = statusAnterior,
                     Status_Novo = novoStatus,
                     Timestamp = DateTime.Now,
+                    // Usando os dados CORRETOS do usuário buscado no DB:
                     Id_Nivel = usuario.Id_Nivel,
-                    Nome_Nivel = usuario.Nivel.Nome_Nivel
+                    Nome_Nivel = usuario.Nivel.Nome_Nivel // Vai ser "Funcionario" ou "Admin"
                 };
 
-                // Certifique-se de que LogStatus é um tipo conhecido, vou deixar como comentário
-                // _context.LogStatus.Add(logEntry);
-                // await _context.SaveChangesAsync();
+                // 🚨 CORREÇÃO APLICADA: Adicionar ao contexto e salvar as mudanças
+                _context.LogStatus.Add(logEntry);
+                await _context.SaveChangesAsync();
             }
         }
 
@@ -1152,6 +1264,65 @@ namespace Farol_Seguro.Controllers
 
             // Retorna a média em horas
             return denunciasContadas > 0 ? totalHoras / denunciasContadas : 0.0;
+        }
+
+        [Authorize(Roles = "Aluno")]
+        public async Task<IActionResult> Remover(int idNotificacao)
+        {
+            var alunoIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(alunoIdStr) || !int.TryParse(alunoIdStr, out int alunoId))
+            {
+                TempData["MensagemErro"] = "Erro de autenticação. Tente logar novamente.";
+                return RedirectToAction("Login", "Account");
+            }
+
+            // Busca a notificação e verifica se ela pertence ao aluno logado para segurança
+            var notificacao = await _context.Notificacao
+                .FirstOrDefaultAsync(n => n.Id_Notificacao == idNotificacao && n.Id_Aluno == alunoId);
+
+            if (notificacao == null)
+            {
+                TempData["MensagemErro"] = "Notificação não encontrada ou acesso negado.";
+                return RedirectToAction(nameof(MinhasNotificacoes));
+            }
+
+            _context.Notificacao.Remove(notificacao);
+            await _context.SaveChangesAsync();
+            TempData["MensagemSucesso"] = "Notificação removida com sucesso.";
+
+            return RedirectToAction(nameof(MinhasNotificacoes));
+        }
+
+        // ----------------------------------------------------
+        // AÇÃO 2: Limpar Todas as Notificações do Aluno
+        // ----------------------------------------------------
+        [Authorize(Roles = "Aluno")]
+        public async Task<IActionResult> LimparTodas()
+        {
+            var alunoIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(alunoIdStr) || !int.TryParse(alunoIdStr, out int alunoId))
+            {
+                TempData["MensagemErro"] = "Erro de autenticação. Tente logar novamente.";
+                return RedirectToAction("Login", "Account");
+            }
+
+            // Busca todas as notificações do aluno
+            var notificacoesParaRemover = await _context.Notificacao
+                .Where(n => n.Id_Aluno == alunoId)
+                .ToListAsync();
+
+            if (notificacoesParaRemover.Any())
+            {
+                _context.Notificacao.RemoveRange(notificacoesParaRemover);
+                await _context.SaveChangesAsync();
+                TempData["MensagemSucesso"] = $"Total de {notificacoesParaRemover.Count} notificações foram removidas.";
+            }
+            else
+            {
+                TempData["MensagemAviso"] = "Você não tem notificações para remover.";
+            }
+
+            return RedirectToAction(nameof(MinhasNotificacoes));
         }
 
     }

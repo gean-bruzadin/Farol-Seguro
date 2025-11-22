@@ -145,31 +145,6 @@
 
                         <ul class="profile-dropdown-list" id="dropdownMenu">
                             <li class="profile-dropdown-list-item">
-                                <button id="openUserModalBtn">
-                                    <i class="bi bi-person-circle"></i>Editar Perfil
-                                </button>
-
-                                <dialog id="user-modal">
-                                    <form id="user-form" class="Usermodal-content">
-                                        <div class="close-btn">
-                                            <span id="closeUserModalBtn" class="close">&times;</span>
-                                        </div>
-                                        <h2 id="modal_title">Perfil</h2>
-
-                                        <div class="profile-content">
-                                            <img id="profile-preview" src="~/profile.png" alt="Foto de perfil">
-                                            <h3 id="user-name">@User.Identity.Name</h3>
-                                            <p id="user-email">@User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value</p>
-                                        </div>
-
-                                        <div class="modal-buttons">
-                                            <a href="@Url.Action("Index", "Aluno")">Editar perfil</a>
-                                            <button type="button" class="cancel-btn" id="closeUserModalCancel">Fechar</button>
-                                        </div>
-                                    </form>
-                                </dialog>
-                            </li>
-                            <li class="profile-dropdown-list-item">
                                 <a asp-controller="Conta" asp-action="Configuracoes"><i class="bi bi-gear-fill"></i> Configurações</a>
                             </li>
                             <hr />

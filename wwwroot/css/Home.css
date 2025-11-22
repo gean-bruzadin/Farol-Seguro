@@ -1,0 +1,276 @@
+﻿﻿@import url('https://fonts.googleapis.com/css2?family=Paytone+One&display=swap');
+
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    background-color: #f0e7d3;
+    overflow-x: hidden;
+    height: 100%;
+    box-sizing: border-box;
+    font-family: "Paytone One", sans-serif;
+}
+
+/* body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.2); escurecimento
+    z-index: 0;
+    pointer-events: none;
+} */
+
+
+
+
+/* ///////////////////-- CONTEÚDO --///////////////////// */
+/* ///////////////////-- CONTEÚDO --///////////////////// */
+/* ///////////////////-- CONTEÚDO --///////////////////// */
+
+
+.conteudo-home {
+    display: flex;
+    margin-top: 5vh;
+    justify-content: space-around;
+    position: sticky;
+}
+
+#bem-vindo {
+    display: flex;
+    margin-top: 9vh;
+    color: rgb(0, 0, 0);
+    font-size: 10vh;
+}
+
+.container {
+    max-width: 9999999px; /* exemplo */
+}
+
+
+/* ///////////////////-- BTN MUDAR TEMA DA PÁGINA --///////////////////// */
+/* ///////////////////-- BTN MUDAR TEMA DA PÁGINA --///////////////////// */
+/* ///////////////////-- BTN MUDAR TEMA DA PÁGINA --///////////////////// */
+
+
+.theme-toggle {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background: var(--purple1);
+    color: var(--white);
+    border: none;
+    padding: 10px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+    .theme-toggle:hover {
+        transform: scale(1.1);
+    }
+/* mudar tema da pagina */
+
+:root {
+    --bg-light: #ffffff;
+    --text-light: #000000;
+    --bg-dark: #121212;
+    --text-dark: #ffffff;
+}
+
+[data-theme="dark"] {
+    background-color: var(--bg-dark);
+    color: var(--text-dark);
+}
+
+[data-theme="light"] {
+    background-color: var(--bg-light);
+    color: var(--text-light);
+}
+
+.theme-toggle {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background: var(--text-light);
+    color: var(--bg-light);
+    border: none;
+    padding: 10px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.3s ease, background 0.3s ease;
+}
+
+    .theme-toggle:hover {
+        transform: scale(1.1);
+    }
+
+
+/* ///////////////////-- BTN  DA ACESSIBILIDADE --///////////////////// */
+/* ///////////////////-- BTN  DA ACESSIBILIDADE --///////////////////// */
+/* ///////////////////-- BTN  DA ACESSIBILIDADE --///////////////////// */
+
+
+.accessibility-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column-reverse; /* Inverte a ordem: botão embaixo, menu acima */
+    align-items: flex-end;
+    z-index: 999;
+}
+
+.accessibility-btn {
+    background-color: #a02d33;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    padding: 15px;
+    font-size: 20px;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.accessibility-menu {
+    display: none;
+    flex-direction: column;
+    margin-bottom: 10px;
+    gap: 5px;
+}
+
+    .accessibility-menu li {
+        list-style: none;
+    }
+
+    .accessibility-menu button {
+        background-color: #f8f9fa;
+        border: 1px solid #ccc;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background-color 0.2s ease-in-out;
+        width: 100%;
+    }
+
+        .accessibility-menu button:hover {
+            background-color: #e2e6ea;
+        }
+
+.high-contrast {
+    background-color: #000 !important;
+    color: #fff !important;
+}
+
+    .high-contrast a,
+    .high-contrast button,
+    .high-contrast li {
+        color: yellow !important;
+        background-color: #000 !important;
+        border-color: #fff !important;
+    }
+
+/* Cores Principais */
+:root {
+    --medium-red: #A02D33;
+    --text-color: #1a1a1a;
+}
+
+/* ====================== */
+/* CONTAINER PRINCIPAL    */
+/* ====================== */
+
+#bem-vindo-container {
+    max-width: 600px;
+    margin: 20px;
+    margin-top: 9vh;
+    font-family: "Paytone One", sans-serif;
+}
+
+    /* Primeira linha: "Bem-Vindo" */
+    #bem-vindo-container p:first-child {
+        color: var(--text-color);
+        line-height: 1.1;
+        margin-bottom: 0;
+    }
+
+/* Segunda linha: "ao Farol Seguro" */
+.frase-secundaria {
+    display: flex;
+    align-items: baseline;
+    margin-top: 5px;
+}
+
+/* Destaque "Farol Seguro" */
+.destaque {
+    color: var(--medium-red);
+    white-space: nowrap;
+    margin-left: 0.25em;
+}
+
+/* ====================== */
+/*        RESPONSIVO      */
+/* ====================== */
+
+/* Celulares pequenos */
+@media (max-width: 480px) {
+
+    #bem-vindo-container {
+        margin-top: 6vh;
+        text-align: center;
+    }
+
+        #bem-vindo-container p:first-child {
+            font-size: 2.5em;
+        }
+
+    .frase-secundaria {
+        font-size: 1.6em;
+        flex-direction: column; /* "ao" em cima de "Farol Seguro" */
+        align-items: center;
+    }
+
+        .frase-secundaria span {
+            margin-left: 0 !important;
+        }
+
+    .destaque {
+        font-size: 8vh !important;
+        margin-left: 0;
+    }
+}
+
+/* Celulares médios e tablets */
+@media (min-width: 481px) and (max-width: 991px) {
+
+    #bem-vindo-container p:first-child {
+        font-size: 4em;
+    }
+
+    .frase-secundaria {
+        font-size: 2.5em;
+    }
+
+    .destaque {
+        font-size: 9vh;
+    }
+}
+
+/* Monitores / telas grandes */
+@media (min-width: 992px) {
+    #bem-vindo-container p:first-child {
+        font-size: 5em;
+    }
+
+    .frase-secundaria {
+        font-size: 3em;
+    }
+
+    .destaque {
+        font-size: 11vh;
+    }
+}

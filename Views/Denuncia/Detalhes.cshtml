@@ -1,0 +1,158 @@
+﻿@model Farol_Seguro.Models.Denuncia
+
+@{
+    ViewData["Title"] = "Detalhes da Denúncia";
+
+    // Variáveis de Controle
+    bool isAluno = User.IsInRole("Aluno");
+    bool ehGestor = User.IsInRole("Funcionario") || User.IsInRole("Admin");
+
+    // Regra: Aluno PODE editar se o status for Aberta ou Pendente
+    bool podeAlunoEditar = isAluno &&
+                           (Model.Status_Denuncia == "Pendente" || Model.Status_Denuncia == "Aberta");
+
+    string actionVoltar = ehGestor ? "Index" : "MinhasDenuncias";
+}
+
+<link href="~/css/header.css" rel="stylesheet" />
+
+<h2 class="mb-4">Detalhes da Denúncia</h2>
+
+@* =======================================================
+    BLOCO PARA EXIBIR MENSAGENS DE ALERTA (SUCESSO/ERRO)
+======================================================== *@
+@{
+    if (TempData["MensagemSucesso"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <strong>Sucesso!</strong> @TempData["MensagemSucesso"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    else if (TempData["MensagemErro"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Erro!</strong> @TempData["MensagemErro"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+}
+@* =======================================================
+    FIM DO BLOCO DE MENSAGENS
+======================================================== *@
+
+@if (Model == null)
+{
+    <div class="alert alert-warning">Denúncia não encontrada.</div>
+}
+else
+{
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <p><strong>ID:</strong> @Model.Id_Denuncia</p>
+            <p><strong>Título:</strong> @(Model.Titulo_Denuncia ?? "-")</p>
+            <p><strong>Descrição:</strong> @Model.Descricao_Denuncia</p>
+            <p><strong>Categoria:</strong> @Model.Categoria_Denuncia</p>
+            <p><strong>Status:</strong> @Model.Status_Denuncia</p>
+            <p><strong>Data de criação:</strong> @Model.DataCriacao_Denuncia.ToString("dd/MM/yyyy HH:mm")</p>
+            <p><strong>Aluno:</strong> @(Model.DenunciaAnonima ? "Anônima" : Model.Aluno?.Nome_Aluno ?? "Não informado")</p>
+            <p><strong>Escola:</strong> @Model.Escola?.Nome_Escola</p>
+
+            <hr />
+
+            <h6>Anexos</h6>
+            @if (Model.Anexos != null && Model.Anexos.Any())
+            {
+                <ul class="list-group list-group-flush mb-3">
+                    @foreach (var a in Model.Anexos)
+                    {
+                        <li class="list-group-item"><a href="@a.Caminho_Anexo" target="_blank"><i class="fas fa-paperclip me-2"></i> @(a.NomeOriginal_Anexo ?? a.Tipo_Anexo)</a></li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p>Sem anexos.</p>
+            }
+
+            <h6 class="mt-3">Testemunhas</h6>
+            @if (Model.DenunciaTestemunhas != null && Model.DenunciaTestemunhas.Any())
+            {
+                <ul>
+                    @foreach (var dt in Model.DenunciaTestemunhas)
+                    {
+                        <li>
+                            @dt.Testemunha?.Nome_Testemunha
+                            @if (!string.IsNullOrWhiteSpace(dt.Testemunha?.Telefone_Testemunha))
+                            {
+                                <span>- @dt.Testemunha.Telefone_Testemunha</span>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p>Sem testemunhas.</p>
+            }
+
+            <h6 class="mt-3">Respostas</h6>
+            @if (Model.Respostas != null && Model.Respostas.Any())
+            {
+                <ul class="list-group list-group-flush mb-3">
+                    @foreach (var r in Model.Respostas.OrderBy(r => r.Data_Resposta))
+                    {
+                        <li class="list-group-item">
+                            <small class="text-muted">(@r.Data_Resposta.ToString("dd/MM/yyyy HH:mm"))</small><br />
+                            @r.Descricao_Resposta
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p>Sem respostas.</p>
+            }
+
+            <div class="mt-4">
+                <a asp-action="@actionVoltar" class="btn btn-secondary me-2">Voltar</a>
+            </div>
+
+            @* Formulário de resposta e alteração de status — apenas Func/Admin *@
+            @if (ehGestor)
+            {
+                <hr />
+                <h5>Adicionar resposta</h5>
+                <form asp-action="Responder" method="post" class="mt-2">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="Id_Denuncia" value="@Model.Id_Denuncia" />
+                    <div class="mb-2">
+                        <textarea name="Descricao_Resposta" class="form-control" rows="3" placeholder="Digite a resposta..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success">Enviar resposta</button>
+                </form>
+
+                <hr />
+                <h5>Alterar status</h5>
+                <form asp-action="AlterarStatus" method="post" class="mt-2">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.Id_Denuncia" />
+                    <div class="mb-2">
+                        <select name="novoStatus" class="form-select" required>
+                            <option value="">-- Selecionar --</option>
+                            <option value="Aberta">Aberta</option>
+                            <option value="Pendente">Pendente</option>
+                            <option value="Em Análise">Em Análise</option>
+                            <option value="Respondida">Respondida</option>
+                            <option value="Resolvida">Resolvida</option>
+                            <option value="Encerrada">Encerrada</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </form>
+            }
+        </div>
+    </div>
+}
+<script src="~/js/menu_dropdown.js"></script>
+<script src="~/js/open-modal.js"></script>

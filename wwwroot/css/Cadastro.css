@@ -1,0 +1,213 @@
+﻿/* IMPORT FONT POPPINS */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+
+/* Cores Principais */
+:root {
+    --dark-red: #8B0000;
+    --medium-red: #A02D33;
+    --text-color: #1a1a1a;
+    --light-gray: #f5f5f5;
+    --white: #ffffff;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+/* Fundo e Centralização (CORREÇÃO: Usando 'overflow: hidden' geral) */
+html, body {
+    height: 100vh;
+    background: linear-gradient(135deg, var(--dark-red), var(--medium-red));
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* Define OVERFLOW: HIDDEN para evitar todas as barras de rolagem */
+    overflow: hidden;
+    font-family: 'Poppins', sans-serif !important;
+}
+
+/* Container Principal (AJUSTADO: Mais largo e menor) */
+.container {
+    background-color: var(--white);
+    width: 90%;
+    max-width: 1050px;
+    display: flex;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    /* Remove overflow:hidden aqui para evitar o corte de sombras, mas já está no html/body */
+    overflow: visible;
+    height: 550px;
+}
+
+/* Lado da Imagem/Esquerda (MANTIDO) */
+.image-side {
+    flex: 1.2;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+    background-color: var(--light-gray);
+}
+
+.image-content {
+    width: 100%;
+    text-align: center;
+}
+
+/* Título "Farol Seguro" */
+.safelink-title {
+    color: var(--dark-red);
+    font-size: 40px;
+    font-weight: 700;
+    margin-bottom: 25px;
+}
+
+.decorative-image {
+    max-width: 90%;
+    height: auto;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+}
+
+/* Lado do Formulário/Direita (CORREÇÃO: Removendo overflow-y) */
+.form-side {
+    flex: 1;
+    padding: 35px 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    /* REMOVIDO: overflow-y: auto; */
+}
+
+.title {
+    margin-bottom: 25px;
+    color: var(--text-color);
+    font-size: 32px;
+    text-align: center;
+    font-weight: 700;
+}
+
+/* Estilo para cada campo de input (MANTIDO) */
+.input-field {
+    display: flex;
+    align-items: center;
+    background-color: var(--white);
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    padding: 8px 15px;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+    position: relative;
+    height: 45px;
+}
+
+    /* Ícones */
+    .input-field .icon {
+        color: var(--medium-red);
+        font-size: 22px;
+        margin-right: 12px;
+        min-width: 22px;
+    }
+
+    /* Input, Select, e Date */
+    .input-field .form-control {
+        border: none !important;
+        box-shadow: none !important;
+        outline: none !important;
+        width: 100%;
+        font-size: 16px;
+        color: var(--text-color);
+        padding: 0;
+        background-color: transparent !important;
+        font-family: 'Poppins', sans-serif !important;
+        height: 100%;
+    }
+
+    /* Ajuste específico para o Select */
+    .input-field select.form-control {
+        appearance: none;
+        -moz-appearance: none;
+        -webkit-appearance: none;
+        padding-right: 25px;
+        cursor: pointer;
+    }
+
+    /* Estilo para o placeholder/formato de data antes da seleção */
+    .input-field input[type="date"]:valid::before {
+        content: none !important;
+    }
+
+    /* Efeito de foco (hover/focus) */
+    .input-field:focus-within {
+        border-color: var(--dark-red);
+        box-shadow: 0 0 10px rgba(139, 0, 0, 0.3);
+    }
+
+/* Botão de Cadastro/Entrar */
+.btn-register {
+    padding: 15px;
+    background: linear-gradient(135deg, var(--dark-red) 0%, var(--medium-red) 100%);
+    color: var(--white);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 17px;
+    width: 100%;
+    font-weight: 600;
+    margin-top: 15px;
+}
+
+    .btn-register:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 15px rgba(139, 0, 0, 0.4);
+    }
+
+/* Link de Cadastro/Login */
+.login-link {
+    margin-top: 25px;
+    font-size: 15px;
+    text-align: center;
+    color: var(--text-color);
+}
+
+    .login-link a {
+        color: var(--dark-red);
+        text-decoration: none;
+        font-weight: 600;
+        transition: color 0.3s ease;
+    }
+
+        .login-link a:hover {
+            color: var(--medium-red);
+            text-decoration: underline;
+        }
+
+/* Media Query para telas menores (MANTIDO) */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+        max-width: 400px;
+        height: auto;
+        margin: 50px auto;
+    }
+
+    .image-side {
+        display: none;
+    }
+
+    .form-side {
+        padding: 40px 30px;
+        justify-content: flex-start;
+    }
+
+    .title {
+        font-size: 28px;
+    }
+
+    h1 {
+        color: #1a1a1a
+    }
+}

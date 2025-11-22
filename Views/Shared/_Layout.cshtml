@@ -1,0 +1,195 @@
+﻿@using System.Security.Claims
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Farol_Seguro</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/Home.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/modal_user.css" asp-append-version="true" />
+    
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <style>
+        /* CSS OBRIGATÓRIO para posicionar o badge de notificação */
+        .notification-icon {
+            position: relative;
+            margin-left: 10px;
+            display: inline-block; /* Crucial para o position: relative funcionar e para o alinhamento */
+            color: white; /* Cor do ícone */
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+            .notification-icon:hover {
+                color: #ccc; /* Cor ao passar o mouse */
+            }
+
+        .notification-badge {
+            position: absolute;
+            top: -8px;
+            right: -5px;
+            font-size: 0.65rem;
+            padding: 3px 5px;
+            /* Se você usar bg-danger, ele já tem a cor de fundo vermelha */
+        }
+
+        /* ... (restante do seu CSS) ... */
+        #FS_span {
+            color: white;
+            text-decoration: none;
+            transition: text-decoration 0.2s;
+        }
+
+            #FS_span:hover {
+                text-decoration: underline;
+            }
+    </style>
+
+</head>
+<body>
+
+    <header>
+        <div class="logo">
+            <a href="@Url.Action("Index", "Home")" id="farolseguro_btn">
+                <span id="FS_span">Farol Seguro</span>
+                <img src="~/farol.png" alt="Logo" width="57px" height="54px" />
+            </a>
+        </div>
+
+        <div class="nav-container">
+            <nav class="nav-links">
+
+                @* --- BLOC DE FORMULÁRIOS (Corrigido para Admin) --- *@
+                @if (User.IsInRole("Admin"))
+                {
+                    <div class="header-summary">
+                        <details>
+                            <summary>
+                                <i class="fas fa-book"></i> Formulários
+                            </summary>
+                            <div class="summary-dropdown">
+                                <div class="summary-section">
+                                    <div class="summary-section-title">Informações Gerais</div>
+
+                                    <a href="@Url.Action("Index", "Aluno")">Aluno</a>
+                                    <a href="@Url.Action("Index", "Cargo")">Cargo</a>
+                                    <a href="@Url.Action("Index", "Cidade")">Cidade</a>
+                                    <a href="@Url.Action("Index", "Escola")">Escola</a>
+                                    <a href="@Url.Action("Criar", "Estado")">Estado</a>
+                                    <a href="@Url.Action("Index", "Funcionario")">Funcionário</a>
+                                    <a href="@Url.Action("Criar", "Nivel")">Nível</a>
+                                    <a href="@Url.Action("Index", "Usuario")">Usuario</a>
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                }
+
+                <a href="@Url.Action("Criar", "Denuncia")"><i class="fas fa-exclamation-circle"></i> Criar Denúncia</a>
+
+                @if (User.IsInRole("Aluno"))
+                {
+                    @* ALUNO: Link para Denúncias *@
+                    <a href="@Url.Action("MinhasDenuncias", "Denuncia")"><i class="fas fa-list"></i> Minhas Denúncias</a>
+
+                    @* ✅ CORREÇÃO AQUI: Removido o <li>. O link é um <a> direto com a classe notification-icon. *@
+                    <a class="notification-icon" asp-area="" asp-controller="Denuncia" asp-action="MinhasNotificacoes">
+                        <i class="fas fa-bell"></i>
+                        @* Chama o View Component para renderizar o badge, se houver notificações não lidas *@
+                        @await Component.InvokeAsync("NotificacoesNaoLidas")
+                    </a>
+                }
+                else if (User.IsInRole("Funcionario") || User.IsInRole("Admin"))
+                {
+                    @* FUNC/ADMIN: Lista Geral de Denúncias *@
+                    <a href="@Url.Action("Index", "Denuncia")"><i class="fas fa-search"></i> Lista de Denúncias</a>
+                }
+
+                @* Exibe o Dashboard SOMENTE para Funcionario ou Admin *@
+                @if (User.IsInRole("Funcionario") || User.IsInRole("Admin"))
+                {
+                    <a href="@Url.Action("Dashboard", "Denuncia")"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                }
+
+                <ul class="navbar-nav flex-grow-1">
+                    @* Item Vazio para ocupar espaço *@
+                </ul>
+            </nav>
+
+            @if (User.Identity.IsAuthenticated)
+            {
+                <nav class="btn_conta">
+                    <div class="profile-dropdown">
+                        <div class="profile-dropdown-btn" onclick="toggleDropdown()">
+                            <div class="profile-img">
+                                <img src="~/profile.png" alt="Foto de perfil" width="25px" height="25px" />
+                            </div>
+                            <span>
+                                @User.Identity.Name
+                                <i id="btn_seta" class="fa-solid fa-caret-down"></i>
+                            </span>
+
+                            @* **IMPORTANTE:** O BLOCO DE NOTIFICAÇÃO FOI REMOVIDO DAQUI *@
+
+                        </div>
+
+                        <ul class="profile-dropdown-list" id="dropdownMenu">
+                            <li class="profile-dropdown-list-item">
+                                <button id="openUserModalBtn">
+                                    <i class="bi bi-person-circle"></i>Editar Perfil
+                                </button>
+
+                                <dialog id="user-modal">
+                                    <form id="user-form" class="Usermodal-content">
+                                        <div class="close-btn">
+                                            <span id="closeUserModalBtn" class="close">&times;</span>
+                                        </div>
+                                        <h2 id="modal_title">Perfil</h2>
+
+                                        <div class="profile-content">
+                                            <img id="profile-preview" src="~/profile.png" alt="Foto de perfil">
+                                            <h3 id="user-name">@User.Identity.Name</h3>
+                                            <p id="user-email">@User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value</p>
+                                        </div>
+
+                                        <div class="modal-buttons">
+                                            <a href="@Url.Action("Index", "Aluno")">Editar perfil</a>
+                                            <button type="button" class="cancel-btn" id="closeUserModalCancel">Fechar</button>
+                                        </div>
+                                    </form>
+                                </dialog>
+                            </li>
+                            <li class="profile-dropdown-list-item">
+                                <a asp-controller="Conta" asp-action="Configuracoes"><i class="bi bi-gear-fill"></i> Configurações</a>
+                            </li>
+                            <hr />
+                            <li class="profile-dropdown-list-item">
+                                <a href="@Url.Action("Logout", "Autenticacao")"><i class="bi bi-box-arrow-in-left"></i> Sair</a>
+                            </li>
+                        </ul>
+                    </div>
+                </nav>
+            }
+        </div>
+    </header>
+
+    <div class="container">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <script src="~/js/menu_dropdown.js"></script>
+    <script src="~/js/open-modal.js"></script>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+
+</body>
+</html>

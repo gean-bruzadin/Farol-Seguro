@@ -1,0 +1,406 @@
+﻿@import url('https://fonts.googleapis.com/css2?family=Paytone+One&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body {
+    background-color: #f0e7d3 !important;
+    overflow-x: hidden;
+    height: 100%;
+    box-sizing: border-box;
+    font-family: "Paytone One", sans-serif;
+}
+
+
+
+/* ///////////////////-- CONTEÚDO PRINCIPAL --///////////////////// */
+
+.container {
+    max-width: 1000px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.page-title {
+    text-align: center;
+    margin-bottom: 40px;
+    color: #2c3e50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    font-family: "Paytone One", sans-serif;
+}
+
+    .page-title i {
+        color: #a02d33;
+        font-size: 28px;
+    }
+
+.settings-container {
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+/* ///////////////////-- MENU LATERAL --///////////////////// */
+
+.settings-layout {
+    display: flex;
+    min-height: 600px;
+}
+
+.settings-sidebar {
+    width: 250px;
+    background-color: #f8f9fa;
+    border-right: 1px solid #e9ecef;
+    padding: 0;
+    border-right: solid #8B0000;
+}
+
+.settings-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.settings-menu-item {
+    border-bottom: 1px solid #e9ecef;
+}
+
+.settings-menu-link {
+    display: flex;
+    align-items: center;
+    padding: 18px 20px;
+    color: #333;
+    text-decoration: none;
+    transition: all 0.3s;
+    border-left: 4px solid transparent;
+    border-bottom: solid #8B0000;
+    font-family: "Paytone One", sans-serif;
+}
+
+    .settings-menu-link:hover {
+        background-color: #e9ecef;
+        color: #a02d33;
+    }
+
+    .settings-menu-link.active {
+        background-color: white;
+        border-left-color: #a02d33;
+        color: #a02d33;
+        font-weight: bold;
+    }
+
+    .settings-menu-link i {
+        margin-right: 12px;
+        width: 20px;
+        text-align: center;
+    }
+
+/* ///////////////////-- CONTEÚDO DAS CONFIGURAÇÕES --///////////////////// */
+
+.settings-content {
+    flex: 1;
+    padding: 30px;
+}
+
+.settings-section {
+    margin-bottom: 40px;
+    display: none;
+}
+
+    .settings-section.active {
+        display: block;
+    }
+
+.section-title {
+    font-size: 22px;
+    color: #2c3e50;
+    margin-bottom: 25px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 10px;
+    font-family: "Paytone One", sans-serif;
+}
+
+    .section-title i {
+        color: #a02d33;
+    }
+
+/* ///////////////////-- CARDS DE CONFIGURAÇÃO --///////////////////// */
+
+.settings-card {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-left: 4px solid #a02d33;
+}
+
+.card-title {
+    font-size: 18px;
+    color: #2c3e50;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+    .card-title i {
+        color: #a02d33;
+    }
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #333;
+    }
+
+.form-control {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 16px;
+    transition: border-color 0.3s;
+}
+
+    .form-control:focus {
+        border-color: #a02d33;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(160, 45, 51, 0.2);
+    }
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+    .checkbox-group input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+    }
+
+    .checkbox-group label {
+        margin: 0;
+        font-weight: normal;
+    }
+
+.form-row {
+    display: flex;
+    gap: 20px;
+}
+
+.form-col {
+    flex: 1;
+}
+
+/* ///////////////////-- BOTÕES --///////////////////// */
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background-color: #a02d33;
+    color: white;
+}
+
+    .btn-primary:hover {
+        background-color: #C9434A;
+        transform: translateY(-2px);
+    }
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+    .btn-secondary:hover {
+        background-color: #5a6268;
+    }
+
+.btn-outline {
+    background-color: transparent;
+    border: 1px solid #a02d33;
+    color: #a02d33;
+}
+
+    .btn-outline:hover {
+        background-color: #a02d33;
+        color: white;
+    }
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+/* ///////////////////-- LISTAS E ITENS --///////////////////// */
+
+.settings-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.settings-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background-color: white;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    margin-bottom: 10px;
+}
+
+.list-item-info h4 {
+    margin-bottom: 5px;
+    color: #2c3e50;
+}
+
+.list-item-info p {
+    color: #6c757d;
+    font-size: 14px;
+    margin: 0;
+}
+
+/* ///////////////////-- SWITCH TOGGLE --///////////////////// */
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 24px;
+}
+
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+
+input:checked + .toggle-slider {
+    background-color: #a02d33;
+}
+
+    input:checked + .toggle-slider:before {
+        transform: translateX(26px);
+    }
+
+/* ///////////////////-- RESPONSIVIDADE --///////////////////// */
+
+@media (max-width: 768px) {
+    header {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .nav-container {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .nav-links {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .settings-layout {
+        flex-direction: column;
+    }
+
+    .settings-sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .settings-menu {
+        display: flex;
+        overflow-x: auto;
+    }
+
+    .settings-menu-item {
+        border-bottom: none;
+        border-right: 1px solid #e9ecef;
+        flex-shrink: 0;
+    }
+
+    .settings-menu-link {
+        white-space: nowrap;
+        border-left: none;
+        border-bottom: 3px solid transparent;
+    }
+
+        .settings-menu-link.active {
+            border-left: none;
+            border-bottom-color: #a02d33;
+        }
+
+    .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}

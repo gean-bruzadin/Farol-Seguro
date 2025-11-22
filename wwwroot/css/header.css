@@ -1,0 +1,284 @@
+﻿@import url('https://fonts.googleapis.com/css2?family=Paytone+One&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,700&display=swap');
+
+
+/* ///////////////////-- HEADER--///////////////////// */
+/* ///////////////////-- HEADER--///////////////////// */
+/* ///////////////////-- HEADER--///////////////////// */
+
+
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(135deg, #a02d33 0%, #C9434A 100%);
+    padding: 12px 5%;
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    font-family: "Paytone One", sans-serif;
+}
+
+
+/* ///////////////////-- HEADER _ BOTÃO USUÁRIO --///////////////////// */
+/* ///////////////////-- HEADER _ BOTÃO USUÁRIO --///////////////////// */
+/* ///////////////////-- HEADER _ BOTÃO USUÁRIO --///////////////////// */
+
+
+.btn_conta {
+    text-align: center;
+    background-color: transparent;
+    border-radius: 5px;
+    max-height: calc(5rem - 2rem);
+    min-width: calc(7.5rem - 1rem);
+}
+
+.profile-dropdown {
+    position: relative;
+}
+
+.profile-dropdown-btn {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    color: white;
+    border: 1px solid black;
+    border-radius: 50px;
+}
+
+.profile-img {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: #a02d33;
+    margin-right: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+}
+
+.profile-dropdown-btn span {
+    font-size: 16px;
+}
+
+.profile-dropdown-btn i {
+    margin-left: 5px;
+}
+
+/* Estilo do menu dropdown */
+.profile-dropdown-list {
+    display: none;
+    position: absolute;
+    top: 40px;
+    right: 0;
+    background-color: white;
+    color: #333;
+    width: 230px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    padding: 10px;
+    z-index: 1000;
+    opacity: 0; /* Inicia invisível */
+    max-height: 0; /* Inicia com altura 0 */
+    overflow: hidden; /* Esconde conteúdo extra */
+    transition: opacity 0.3s ease, max-height 0.3s ease; /* Animação */
+}
+
+.profile-dropdown-list-item {
+    padding: 10px;
+    cursor: pointer;
+}
+
+    .profile-dropdown-list-item :hover {
+        background-color: #f1f1f1;
+    }
+
+    .profile-dropdown-list-item a {
+        text-decoration: none;
+        color: #333;
+        display: flex;
+        align-items: center;
+    }
+
+    .profile-dropdown-list-item button {
+        text-decoration: none;
+        color: #333;
+        display: flex;
+        align-items: center;
+        border: none;
+        background-color: white;
+        padding-right: 7vh;
+    }
+
+    .profile-dropdown-list-item i {
+        margin-right: 10px;
+    }
+
+/* Separador de itens */
+hr {
+    margin: 10px 0;
+    border: 0;
+    border-top: 1px solid #000000;
+    color: #000000;
+}
+
+#btn_seta {
+    margin-right: 10px;
+}
+
+
+/* ///////////////////-- HEADER _ BOTÕES DENÚNCIAS --///////////////////// */
+/* ///////////////////-- HEADER _ BOTÕES DENÚNCIAS --///////////////////// */
+/* ///////////////////-- HEADER _ BOTÕES DENÚNCIAS --///////////////////// */
+
+
+.nav-container {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 1;
+}
+
+.nav-links {
+    display: flex;
+    margin-right: 20px;
+}
+
+    .nav-links a {
+        margin: 0 10px;
+        color: white;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.3s;
+        padding: 10px 16px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        white-space: nowrap;
+    }
+
+        .nav-links a i {
+            margin-right: 8px;
+            font-size: 18px;
+        }
+
+        .nav-links a:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+
+/* ///////////////////-- HEADER _ FarolSeguro - LOGO --///////////////////// */
+/* ///////////////////-- HEADER _ FarolSeguro - LOGO --///////////////////// */
+/* ///////////////////-- HEADER _ FarolSeguro - LOGO --///////////////////// */
+
+
+.logo {
+    display: flex;
+    align-items: center;
+    font-weight: bold;
+    font-size: 22px;
+    flex-shrink: 0;
+}
+
+#farolseguro_btn {
+    color: white;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+}
+
+
+/* ///////////////////-- HEADER _ SUMÁRIO --///////////////////// */
+/* ///////////////////-- HEADER _ SUMÁRIO --///////////////////// */
+/* ///////////////////-- HEADER _ SUMÁRIO --///////////////////// */
+
+
+.header-summary {
+    position: relative;
+}
+
+    .header-summary details {
+        position: relative;
+    }
+
+    .header-summary summary {
+        list-style: none;
+        cursor: pointer;
+        padding: 10px 16px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        white-space: nowrap;
+        transition: all 0.3s;
+        background-color: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+        .header-summary summary:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .header-summary summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .header-summary summary i {
+            margin-right: 8px;
+            font-size: 18px;
+        }
+
+.summary-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    padding: 15px;
+    min-width: 250px;
+    margin-top: 5px;
+    z-index: 1000;
+}
+
+    .summary-dropdown a {
+        display: flex;
+        align-items: center;
+        padding: 10px 15px;
+        color: #333;
+        text-decoration: none;
+        border-radius: 5px;
+        transition: all 0.3s;
+        margin-bottom: 5px;
+    }
+
+        .summary-dropdown a:hover {
+            background-color: #f0f0f0;
+            color: #a02d33;
+            transform: translateX(5px);
+        }
+
+        .summary-dropdown a i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+            color: #a02d33;
+        }
+
+.summary-section {
+    margin-bottom: 10px;
+}
+
+.summary-section-title {
+    font-weight: bold;
+    color: #a02d33;
+    margin-bottom: 8px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+    text-transform: uppercase;
+}

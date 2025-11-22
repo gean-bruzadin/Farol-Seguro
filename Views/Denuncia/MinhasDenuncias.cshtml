@@ -1,0 +1,182 @@
+﻿@model IEnumerable<Farol_Seguro.Models.Denuncia>
+
+@{
+    ViewData["Title"] = "Minhas Denúncias";
+}
+
+@{
+    if (TempData["MensagemSucesso"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <strong>Sucesso!</strong> @TempData["MensagemSucesso"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    else if (TempData["MensagemErro"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Erro!</strong> @TempData["MensagemErro"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+}
+
+<link href="~/css/header.css" rel="stylesheet" />
+<link href="~/css/lista.css" rel="stylesheet" />
+
+<div class="mb-3 text-end">
+    <a asp-action="Criar" class="btn btn-success" style="margin-top: 5vh">+ Nova Denúncia</a>
+</div>
+
+<div class="complaints-list">
+    @if (Model == null || !Model.Any())
+    {
+        <div class="text-center p-4">Nenhuma denúncia encontrada.</div>
+    }
+    else
+    {
+        foreach (var item in Model)
+        {
+            <div class="complaint-item" data-id="@item.Id_Denuncia">
+                <div class="complaint-info">
+                    <div class="complaint-id">Denúncia #@item.Id_Denuncia</div>
+                    <div class="complaint-date">@item.DataCriacao_Denuncia.ToString("dd/MM/yyyy")</div>
+                    <div class="complaint-summary">@item.Titulo_Denuncia</div>
+                    <div class="complaint-category">@item.Categoria_Denuncia</div>
+                </div>
+
+                <div class="status-badge @GetStatusClass(item.Status_Denuncia)">
+                    @item.Status_Denuncia
+                </div>
+            </div>
+
+            <div class="complaint-detail" id="detail-@item.Id_Denuncia" style="display:none;">
+                <div class="detail-content">
+                    <h4>Denúncia #@item.Id_Denuncia</h4>
+                    <div class="complaint-date">@item.DataCriacao_Denuncia.ToString("dd/MM/yyyy")</div>
+                    
+                    <hr />
+
+                    <div class="info-section">
+                        <p><strong>ID:</strong> @item.Id_Denuncia</p>
+                        <p><strong>Título:</strong> @(item.Titulo_Denuncia ?? "-")</p>
+                        <p><strong>Descrição:</strong> @item.Descricao_Denuncia</p>
+                        <p><strong>Categoria:</strong> @item.Categoria_Denuncia</p>
+                        <p><strong>Status:</strong> @item.Status_Denuncia</p>
+                        <p><strong>Data:</strong> @item.DataCriacao_Denuncia.ToString("dd/MM/yyyy HH:mm")</p>
+                        <p><strong>Aluno:</strong> @(item.DenunciaAnonima ? "Anónima" : item.Aluno?.Nome_Aluno ?? "Não informado")</p>
+                        <p><strong>Escola:</strong> @item.Escola?.Nome_Escola</p>
+                    </div>
+
+                    <hr />
+
+                    <h6>Anexos</h6>
+                    @if (item.Anexos != null && item.Anexos.Any())
+                    {
+                        <ul>
+                            @foreach (var a in item.Anexos)
+                            {
+                                <li><a href="@a.Caminho_Anexo" target="_blank">@a.Tipo_Anexo</a></li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <p>Sem anexos.</p>
+                    }
+
+                    <h6 class="mt-3">Testemunhas</h6>
+                    @if (item.DenunciaTestemunhas != null && item.DenunciaTestemunhas.Any())
+                    {
+                        <ul>
+                            @foreach (var dt in item.DenunciaTestemunhas)
+                            {
+                                <li>
+                                    @dt.Testemunha?.Nome_Testemunha
+                                    @if (!string.IsNullOrWhiteSpace(dt.Testemunha?.Telefone_Testemunha))
+                                    {
+                                        <span>- @dt.Testemunha.Telefone_Testemunha</span>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <p>Sem testemunhas.</p>
+                    }
+
+                    <h6 class="mt-3">Respostas</h6>
+                    @if (item.Respostas != null && item.Respostas.Any())
+                    {
+                        <ul>
+                            @foreach (var r in item.Respostas)
+                            {
+                                <li>
+                                    <strong>@r.Funcionario?.Nome_Funcionario</strong> - 
+                                    @r.Data_Resposta.ToString("dd/MM/yyyy HH:mm"):
+                                    <br />
+                                    @r.Descricao_Resposta
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <p>Sem respostas.</p>
+                    }
+
+                    <div class="mt-3 d-flex justify-content-end gap-2">
+                        <a asp-action="Editar" asp-route-id="@item.Id_Denuncia" class="btn btn-warning btn-sm">Editar</a>
+                        
+                        <div class="mt-2 text-end">
+                            <button type="button" class="btn btn-secondary btn-sm close-detail">
+                                <i class="fas fa-arrow-left"></i> Fechar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+<script>
+    document.querySelectorAll(".complaint-item").forEach(item => {
+        item.addEventListener("click", () => {
+            const id = item.getAttribute("data-id");
+            const detail = document.getElementById(`detail-${id}`);
+
+            document.querySelectorAll(".complaint-detail").forEach(d => {
+                if (d !== detail) d.style.display = "none";
+            });
+
+            detail.style.display = detail.style.display === "none" ? "block" : "none";
+        });
+    });
+
+    document.querySelectorAll(".close-detail").forEach(btn => {
+        btn.addEventListener("click", e => {
+            e.stopPropagation();
+            btn.closest(".complaint-detail").style.display = "none";
+        });
+    });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+@functions {
+    public string GetStatusClass(string status)
+    {
+        return status?.ToLower() switch
+        {
+            "aberta" => "status-reported",
+            "pendente" => "status-investigating", 
+            "em aberto" => "status-investigating",
+            "respondida" => "status-investigating",
+            "resolvida" => "status-resolved",
+            "encerrada" => "status-closed",
+            _ => "status-reported"
+        };
+    }
+}

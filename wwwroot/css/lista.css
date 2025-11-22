@@ -1,0 +1,92 @@
+﻿@import url('https://fonts.googleapis.com/css2?family=Paytone+One&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Flex:wght@400;700&display=swap');
+
+* { 
+    margin: 0; 
+    padding: 0; 
+    box-sizing: border-box; 
+}
+
+body {
+    background-color: #f0e7d3;
+    font-family: 'Roboto Flex', sans-serif;
+}
+
+.complaints-list {
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    padding: 10px;
+    margin: 20px;
+}
+
+.complaint-item {
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color .2s;
+    cursor: pointer;
+}
+
+.complaint-item:hover { background-color: #f5f9ff; }
+
+.complaint-info { flex: 1; }
+.complaint-id {
+    font-weight: bold;
+    color: #166088;
+    font-size: 1.1rem;
+    font-family: 'Paytone One', sans-serif;
+}
+.complaint-date { font-size: 0.9rem; margin-top: 4px; color: #555; }
+.complaint-summary { margin-top: 8px; color: #333; }
+.complaint-category {
+    background-color: #e9ecef;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    display: inline-block;
+    margin-top: 8px;
+}
+
+.status-badge {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #fff;
+    white-space: nowrap;
+}
+.status-reported { background-color: #4a6fa5; }
+.status-investigating { background-color: #f39c12; }
+.status-resolved { background-color: #2ecc71; }
+.status-closed { background-color: #6c757d; }
+
+.complaint-detail {
+    background-color: #f9f9f9;
+    padding: 15px 25px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin: 10px 30px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.complaint-detail p { margin: 4px 0; color: #333; }
+
+.btn-sm { padding: 5px 10px; }
+
+#back-button {
+    margin: 20px 20px 0px 20px;
+    cursor: pointer;
+    color: #4a6fa5;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    background-color: #e9f2fb;
+    transition: all 0.3s;
+}

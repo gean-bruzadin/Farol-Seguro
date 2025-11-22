@@ -1,0 +1,111 @@
+﻿@model Farol_Seguro.Models.Escola
+
+@{
+    ViewData["Title"] = "Detalhes da Escola";
+}
+
+<link href="~/css/header.css" rel="stylesheet" />
+<link href="~/css/Details.css" rel="stylesheet" />
+
+<div class="details-container">
+    @* Bloco de Mensagens TempData *@
+    @if (TempData["MensagemSucesso"] != null)
+    {
+        <div class="alert alert-success alert-custom alert-dismissible fade show" role="alert">
+            <strong><i class="fas fa-check-circle me-2"></i>Sucesso!</strong> @TempData["MensagemSucesso"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["MensagemErro"] != null)
+    {
+        <div class="alert alert-danger alert-custom alert-dismissible fade show" role="alert">
+            <strong><i class="fas fa-exclamation-circle me-2"></i>Erro!</strong> @TempData["MensagemErro"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- Card de Detalhes -->
+    <div class="details-card">
+        <div class="details-card-header">
+            <h2 class="details-card-title">
+                <i class="fas fa-school"></i>
+                Detalhes da Escola
+            </h2>
+        </div>
+        <div class="details-card-body">
+            <ul class="details-list">
+                <li class="detail-item">
+                    <div class="detail-icon">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <div class="detail-content">
+                        <div class="detail-label">Nome da Escola</div>
+                        <div class="detail-value">@Model.Nome_Escola</div>
+                    </div>
+                </li>
+                <li class="detail-item">
+                    <div class="detail-icon">
+                        <i class="fas fa-file-contract"></i>
+                    </div>
+                    <div class="detail-content">
+                        <div class="detail-label">CNPJ</div>
+                        <div class="detail-value">@Model.Cnpj_Escola</div>
+                    </div>
+                </li>
+                <li class="detail-item">
+                    <div class="detail-icon">
+                        <i class="fas fa-map-marked-alt"></i>
+                    </div>
+                    <div class="detail-content">
+                        <div class="detail-label">Endereço</div>
+                        <div class="detail-value">@Model.Endereco_Escola</div>
+                    </div>
+                </li>
+                <li class="detail-item">
+                    <div class="detail-icon">
+                        <i class="fas fa-phone"></i>
+                    </div>
+                    <div class="detail-content">
+                        <div class="detail-label">Telefone</div>
+                        <div class="detail-value">@Model.Telefone_Escola</div>
+                    </div>
+                </li>
+                <li class="detail-item">
+                    <div class="detail-icon">
+                        <i class="fas fa-city"></i>
+                    </div>
+                    <div class="detail-content">
+                        <div class="detail-label">Cidade</div>
+                        <div class="detail-value">@Model.Cidade?.Nome_Cidade</div>
+                    </div>
+                </li>
+                <li class="detail-item">
+                    <div class="detail-icon">
+                        <i class="fas fa-user-tie"></i>
+                    </div>
+                    <div class="detail-content">
+                        <div class="detail-label">Funcionário Responsável</div>
+                        <div class="detail-value">@Model.Funcionario?.Nome_Funcionario</div>
+                    </div>
+                </li>
+            </ul>
+
+            <!-- Botões de Ação -->
+            <div class="details-actions">
+                <a asp-action="Editar" asp-route-id="@Model.Id_Escola" class="btn-details btn-edit">
+                    <i class="fas fa-edit"></i>
+                    Editar Escola
+                </a>
+                <a asp-action="Index" class="btn-details btn-back">
+                    <i class="fas fa-arrow-left"></i>
+                    Voltar para Lista
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="~/js/menu_dropdown.js"></script>
+<script src="~/js/open-modal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>

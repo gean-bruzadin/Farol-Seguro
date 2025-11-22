@@ -1,0 +1,83 @@
+﻿@model Farol_Seguro.Models.Funcionario
+
+@{
+    ViewData["Title"] = "Criar Novo Funcionário";
+}
+
+<link href="~/css/header.css" rel="stylesheet" />
+<link href="~/css/Form.css" rel="stylesheet" />
+
+<div class="form-container">
+    <div class="form-section">
+        <h1 class="form-title">Cadastrar Novo Funcionário</h1>
+
+        @if (TempData["MensagemSucesso"] != null)
+        {
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <strong>Sucesso!</strong> @TempData["MensagemSucesso"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
+        @if (TempData["MensagemErro"] != null)
+        {
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <strong>Erro!</strong> @TempData["MensagemErro"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
+        <form asp-action="Criar">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="form-group">
+                <label asp-for="Nome_Funcionario" class="control-label">Nome do Funcionário</label>
+                <input asp-for="Nome_Funcionario" class="form-control" />
+                <span asp-validation-for="Nome_Funcionario" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Email_Funcionario" class="control-label">E-mail</label>
+                <input asp-for="Email_Funcionario" class="form-control" type="email" />
+                <span asp-validation-for="Email_Funcionario" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Senha_Funcionario" class="control-label">Senha</label>
+                <input asp-for="Senha_Funcionario" class="form-control" type="password" />
+                <span asp-validation-for="Senha_Funcionario" class="text-danger"></span>
+                <div class="form-help">Senha para acesso ao sistema</div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-col">
+                    <div class="form-group">
+                        <label asp-for="Departamento_Funcionario" class="control-label">Departamento</label>
+                        <input asp-for="Departamento_Funcionario" class="form-control" />
+                        <span asp-validation-for="Departamento_Funcionario" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="form-col">
+                    <div class="form-group">
+                        <label asp-for="Id_Cargo" class="control-label">Cargo</label>
+                        <select asp-for="Id_Cargo" class="form-control" asp-items="ViewBag.Id_Cargo">
+                            <option value="">-- Selecione um Cargo --</option>
+                        </select>
+                        <span asp-validation-for="Id_Cargo" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="btn-group btn-group-center">
+                <button type="submit" class="btn btn-primary">Cadastrar Funcionário</button>
+                <a asp-action="Index" class="btn btn-secondary">Voltar para a Lista</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

@@ -1,0 +1,11 @@
+﻿@model int
+
+@* O modelo (Model) é a contagem de notificações não lidas, que vem da classe do View Component. *@
+@if (Model > 0)
+{
+    @* Usa um "badge" do Bootstrap ou outro framework CSS para exibir o número. 
+       Isso cria o círculo vermelho sobre o ícone do sino. *@
+    <span class="badge rounded-pill bg-danger">
+        @Model
+    </span>
+}

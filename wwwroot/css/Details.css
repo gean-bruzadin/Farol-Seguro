@@ -1,0 +1,236 @@
+﻿
+﻿ /* ===== VARIÁVEIS DE CORES ===== */
+:root {
+    --primary-red: #8B0000;
+    --secondary-red: #A02D33;
+    --light-red: #FFF5F5;
+    --dark-gray: #2D3748;
+    --medium-gray: #4A5568;
+    --light-gray: #F7FAFC;
+    --white: #FFFFFF;
+    --warning: #FFC107;
+    --secondary: #6C757D;
+}
+
+/* ===== ESTILOS GERAIS ===== */
+body {
+    background-color: #f8f9fa;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--dark-gray);
+}
+
+.details-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* ===== HEADER DA PÁGINA ===== */
+.details-header {
+    background: linear-gradient(135deg, var(--primary-red), var(--secondary-red));
+    color: var(--white);
+    padding: 30px;
+    border-radius: 15px;
+    margin-bottom: 30px;
+    box-shadow: 0 10px 30px rgba(139, 0, 0, 0.2);
+    position: relative;
+    overflow: hidden;
+    text-align: center;
+}
+
+    .details-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 100%;
+        height: 200%;
+        background: rgba(255, 255, 255, 0.1);
+        transform: rotate(45deg);
+    }
+
+.details-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+    position: relative;
+}
+
+.details-subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    position: relative;
+}
+
+/* ===== CARD DE DETALHES ===== */
+.details-card {
+    background: var(--white);
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    margin-bottom: 30px;
+}
+
+.details-card-header {
+    background: linear-gradient(135deg, var(--primary-red), var(--secondary-red));
+    color: var(--white);
+    padding: 20px 30px;
+    border-bottom: none;
+}
+
+.details-card-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.details-card-body {
+    padding: 40px;
+}
+
+/* ===== LISTA DE DETALHES ===== */
+.details-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.detail-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 20px 0;
+    border-bottom: 1px solid #E2E8F0;
+}
+
+    .detail-item:last-child {
+        border-bottom: none;
+    }
+
+.detail-icon {
+    background: var(--light-red);
+    color: var(--primary-red);
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    margin-right: 20px;
+    flex-shrink: 0;
+}
+
+.detail-content {
+    flex: 1;
+}
+
+.detail-label {
+    font-weight: 600;
+    color: var(--medium-gray);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+}
+
+.detail-value {
+    font-size: 1.1rem;
+    color: var(--dark-gray);
+    font-weight: 500;
+}
+
+/* ===== BOTÕES ===== */
+.details-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 30px;
+    padding-top: 30px;
+    border-top: 1px solid #E2E8F0;
+}
+
+.btn-details {
+    padding: 12px 30px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.btn-edit {
+    background: var(--warning);
+    color: var(--dark-gray);
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+}
+
+.btn-back {
+    background: var(--secondary);
+    color: var(--white);
+    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+}
+
+.btn-details:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* ===== RESPONSIVIDADE ===== */
+@media (max-width: 768px) {
+    .details-container {
+        padding: 15px;
+    }
+
+    .details-title {
+        font-size: 2rem;
+    }
+
+    .details-card-body {
+        padding: 25px;
+    }
+
+    .detail-item {
+        flex-direction: column;
+        text-align: center;
+        padding: 15px 0;
+    }
+
+    .detail-icon {
+        margin-right: 0;
+        margin-bottom: 15px;
+    }
+
+    .details-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .btn-details {
+        width: 200px;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 576px) {
+    .details-header {
+        padding: 20px;
+    }
+
+    .details-card-body {
+        padding: 20px;
+    }
+
+    .detail-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+}

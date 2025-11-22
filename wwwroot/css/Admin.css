@@ -1,0 +1,196 @@
+﻿/* IMPORT FONT POPPINS */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+
+/* Cores Principais */
+:root {
+    --dark-red: #8B0000;
+    --medium-red: #A02D33;
+    --text-color: #1a1a1a;
+    --light-gray: #f5f5f5;
+    --white: #ffffff;
+    --success-green: #28a745;
+    --error-red: #dc3545;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+/* 1. Fundo Gradiente e Centralização */
+html, body {
+    height: 100vh;
+    background: linear-gradient(135deg, var(--dark-red), var(--medium-red));
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: auto;
+    font-family: 'Poppins', sans-serif !important;
+}
+
+/* 2. Container Principal (Card Centralizado) */
+.form-container {
+    background-color: var(--white);
+    width: 95%;
+    max-width: 500px;
+    padding: 35px 40px;
+    border-radius: 20px;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+    height: auto;
+    margin: 40px auto;
+}
+
+/* Títulos */
+h1 {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text-color);
+    text-align: center;
+    margin-bottom: 5px;
+}
+
+h4 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--medium-red);
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+hr {
+    border-top: 1px solid var(--light-gray);
+    margin-top: 10px;
+    margin-bottom: 20px;
+}
+
+/* 3. Estilização de Alertes */
+.alert {
+    border-radius: 12px;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    font-weight: 400;
+}
+
+.alert-success {
+    background-color: rgba(40, 167, 69, 0.1);
+    color: var(--success-green);
+    border-color: var(--success-green);
+}
+
+.alert-danger {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: var(--error-red);
+    border-color: var(--error-red);
+}
+
+/* 4. Estilo para cada campo de input (Baseado em .input-field) */
+.input-field {
+    display: flex;
+    align-items: center;
+    background-color: var(--white);
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    padding: 8px 15px;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+    height: 48px;
+}
+
+    .input-field .icon {
+        color: var(--medium-red);
+        font-size: 22px;
+        margin-right: 12px;
+        min-width: 22px;
+    }
+
+    .input-field .form-control {
+        border: none !important;
+        box-shadow: none !important;
+        outline: none !important;
+        width: 100%;
+        font-size: 16px;
+        color: var(--text-color);
+        padding: 0;
+        background-color: transparent !important;
+        font-family: 'Poppins', sans-serif !important;
+        height: 100%;
+    }
+
+    .input-field:focus-within {
+        border-color: var(--dark-red);
+        box-shadow: 0 0 10px rgba(139, 0, 0, 0.3);
+    }
+
+/* Estilo do rótulo padrão (Oculto se usar placeholder/input-field) */
+.control-label {
+    display: none;
+}
+
+/* Mensagens de Validação */
+.text-danger {
+    font-size: 14px;
+    margin-top: -10px;
+    margin-bottom: 10px;
+    display: block;
+    text-align: left;
+    color: var(--error-red) !important;
+}
+
+/* 5. Estilização dos Botões */
+
+/* Botão Principal - Criar */
+.btn-primary {
+    padding: 12px 25px;
+    background: linear-gradient(135deg, var(--dark-red) 0%, var(--medium-red) 100%) !important;
+    color: var(--white) !important;
+    border: none !important;
+    border-radius: 12px !important;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 17px;
+    font-weight: 600;
+}
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(139, 0, 0, 0.4);
+    }
+
+/* Botão Secundário - Voltar para a Lista */
+.btn-secondary {
+    padding: 12px 25px;
+    background-color: var(--light-gray) !important;
+    color: var(--text-color) !important;
+    border: 2px solid #ccc !important;
+    border-radius: 12px !important;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 17px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+    .btn-secondary:hover {
+        background-color: #e0e0e0 !important;
+    }
+
+/* Media Query */
+@media (max-width: 600px) {
+    body {
+        align-items: flex-start;
+    }
+
+    .form-container {
+        border-radius: 0;
+        max-width: 100%;
+        box-shadow: none;
+        padding: 30px 20px;
+    }
+
+    .form-group .btn {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+}

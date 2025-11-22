@@ -1,0 +1,168 @@
+﻿@model Farol_Seguro.Models.Denuncia
+
+@{
+    ViewData["Title"] = "Editar Denúncia";
+    bool isAluno = User.IsInRole("Aluno");
+}
+
+<!-- CSS RESTAURADO -->
+<link href="~/css/header.css" rel="stylesheet" />
+
+<h2 class="mb-4">Editar Denúncia #@Model.Id_Denuncia</h2>
+
+@if (TempData["MensagemSucesso"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <strong>Sucesso!</strong> @TempData["MensagemSucesso"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+else if (TempData["MensagemErro"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong>Erro!</strong> @TempData["MensagemErro"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<form asp-action="Editar" enctype="multipart/form-data">
+    <input type="hidden" asp-for="Id_Denuncia" />
+
+    <div class="mb-3">
+        <label asp-for="Titulo_Denuncia" class="form-label"></label>
+        <input asp-for="Titulo_Denuncia" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Descricao_Denuncia" class="form-label"></label>
+        <textarea asp-for="Descricao_Denuncia" class="form-control"></textarea>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Categoria_Denuncia" class="form-label"></label>
+        <input asp-for="Categoria_Denuncia" class="form-control" />
+    </div>
+
+    @if (!isAluno)
+    {
+        <div class="mb-3">
+            <label asp-for="Id_Aluno" class="form-label"></label>
+            <select asp-for="Id_Aluno" class="form-select" asp-items="ViewBag.Id_Aluno"></select>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Status_Denuncia" class="form-label"></label>
+            <select asp-for="Status_Denuncia" class="form-select" required>
+                <option value="Aberta">Aberta</option>
+                <option value="Pendente">Pendente</option>
+                <option value="Em Análise">Em Análise</option>
+                <option value="Respondida">Respondida</option>
+                <option value="Resolvida">Resolvida</option>
+                <option value="Encerrada">Encerrada</option>
+            </select>
+        </div>
+    }
+    else
+    {
+        <input type="hidden" asp-for="Id_Aluno" />
+        <input type="hidden" asp-for="Status_Denuncia" />
+    }
+
+    <div class="form-check mb-3">
+        <input asp-for="DenunciaAnonima" class="form-check-input" />
+        <label asp-for="DenunciaAnonima" class="form-check-label"></label>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Id_Escola" class="form-label"></label>
+        <select asp-for="Id_Escola" class="form-select" asp-items="ViewBag.Id_Escola"></select>
+    </div>
+
+    <hr />
+
+    <h5>Anexos Atuais</h5>
+
+    @if (Model.Anexos != null && Model.Anexos.Any())
+    {
+        <ul class="list-group mb-3">
+            @foreach (var anexo in Model.Anexos)
+            {
+                <li class="list-group-item d-flex justify-content-between align-items-center" id="anexo_@anexo.Id_Anexo">
+                    <a asp-action="DownloadAnexo" asp-route-idAnexo="@anexo.Id_Anexo">
+                        <i class="fas fa-file-alt me-2"></i> @(anexo.NomeOriginal_Anexo ?? "Arquivo Anexado")
+                    </a>
+
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removerAnexo(@anexo.Id_Anexo)">
+                        <i class="fas fa-times"></i> Remover
+                    </button>
+                </li>
+            }
+        </ul>
+    }
+    else
+    {
+        <p class="text-muted">Nenhum anexo enviado anteriormente.</p>
+    }
+
+    <div class="mb-3">
+        <label class="form-label">Adicionar novos anexos</label>
+        <input type="file" name="novosAnexosArquivos" class="form-control" multiple />
+    </div>
+
+    <hr />
+
+    <h5>Testemunhas</h5>
+    <div id="testemunhasContainer">
+        @if (Model.DenunciaTestemunhas != null)
+        {
+            foreach (var dt in Model.DenunciaTestemunhas)
+            {
+                <div class="mb-2">
+                    <input type="text" name="Nome_Testemunha" value="@dt.Testemunha.Nome_Testemunha" class="form-control mb-1" placeholder="Nome" />
+                    <input type="text" name="Telefone_Testemunha" value="@dt.Testemunha.Telefone_Testemunha" class="form-control" placeholder="Telefone" />
+                </div>
+            }
+        }
+    </div>
+
+    <button type="button" class="btn btn-secondary mb-3" onclick="adicionarTestemunha()">Adicionar Testemunha</button>
+
+    <div class="mt-4">
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Salvar Alterações</button>
+        <a asp-action="Detalhes" asp-route-id="@Model.Id_Denuncia" class="btn btn-outline-secondary">Cancelar</a>
+    </div>
+</form>
+
+<script>
+    function adicionarTestemunha() {
+        var container = document.getElementById("testemunhasContainer");
+        var div = document.createElement("div");
+        div.classList.add("mb-2");
+        div.innerHTML = `
+            <input type="text" name="Nome_Testemunha" class="form-control mb-1" placeholder="Nome" />
+            <input type="text" name="Telefone_Testemunha" class="form-control" placeholder="Telefone" />
+        `;
+        container.appendChild(div);
+    }
+
+    function removerAnexo(idAnexo) {
+        if (!confirm("Tem certeza que deseja remover este anexo?")) return;
+
+        fetch(`/Denuncia/RemoverAnexo/${idAnexo}`, {
+            method: 'POST',
+            headers: {
+                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+            }
+        })
+            .then(r => {
+                if (!r.ok) throw r;
+                document.getElementById(`anexo_${idAnexo}`).remove();
+                alert("Anexo removido!");
+            })
+            .catch(() => alert("Erro ao remover o anexo."));
+    }
+</script>
+
+<!-- JS RESTAURADOS -->
+<script src="~/js/menu_dropdown.js"></script>
+<script src="~/js/open-modal.js"></script>

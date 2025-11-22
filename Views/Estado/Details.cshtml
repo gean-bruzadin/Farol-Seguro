@@ -1,0 +1,67 @@
+﻿@model Farol_Seguro.Models.Estado
+
+@{
+    ViewData["Title"] = "Detalhes do Estado";
+}
+
+<link href="~/css/header.css" rel="stylesheet" />
+<link href="~/css/Details.css" rel="stylesheet" />
+
+<div class="details-container">
+    <!-- Card de Detalhes -->
+    <div class="details-card">
+        <div class="details-card-header">
+            <h2 class="details-card-title">
+                <i class="fas fa-flag"></i>
+                Detalhes do Estado
+            </h2>
+        </div>
+        <div class="details-card-body">
+            <ul class="details-list">
+                <li class="detail-item">
+                    <div class="detail-icon">
+                        <i class="fas fa-hashtag"></i>
+                    </div>
+                    <div class="detail-content">
+                        <div class="detail-label">ID</div>
+                        <div class="detail-value">@Html.DisplayFor(model => model.Id_Estado)</div>
+                    </div>
+                </li>
+                <li class="detail-item">
+                    <div class="detail-icon">
+                        <i class="fas fa-map"></i>
+                    </div>
+                    <div class="detail-content">
+                        <div class="detail-label">Nome do Estado</div>
+                        <div class="detail-value">@Html.DisplayFor(model => model.Nome_Estado)</div>
+                    </div>
+                </li>
+                <li class="detail-item">
+                    <div class="detail-icon">
+                        <i class="fas fa-tag"></i>
+                    </div>
+                    <div class="detail-content">
+                        <div class="detail-label">Sigla</div>
+                        <div class="detail-value">@Html.DisplayFor(model => model.Sigla_Estado)</div>
+                    </div>
+                </li>
+            </ul>
+
+            <!-- Botões de Ação -->
+            <div class="details-actions">
+                <a asp-action="Editar" asp-route-id="@Model.Id_Estado" class="btn-details btn-edit">
+                    <i class="fas fa-edit"></i>
+                    Editar Estado
+                </a>
+                <a asp-action="Index" class="btn-details btn-back">
+                    <i class="fas fa-arrow-left"></i>
+                    Voltar para Lista
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="~/js/menu_dropdown.js"></script>
+<script src="~/js/open-modal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>

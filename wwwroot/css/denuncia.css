@@ -1,0 +1,145 @@
+﻿@import url('https://fonts.googleapis.com/css2?family=Paytone+One&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,700&display=swap');
+
+/* font-family: "Roboto Flex", sans-serif; */
+/* font-family: "Paytone One", sans-serif;  */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body {
+    background-color: #f0e7d3;
+    overflow-x: hidden;
+    height: 100%;
+    box-sizing: border-box;
+    font-family: "Roboto Flex", sans-serif;
+}
+
+
+/* ///////////////////-- FORMULÁRIO --///////////////////// */
+/* ///////////////////-- FORMULÁRIO --///////////////////// */
+/* ///////////////////-- FORMULÁRIO --///////////////////// */
+
+
+.form_denuncia {
+    margin: 0 1vh 0 1vh;
+    position: sticky;
+}
+
+.form_section {
+    color: rgb(0, 0, 0);
+    background-color: rgba(255, 255, 255, 0.532);
+    margin: 10vh 10vh;
+    padding: 5vh 5vh 5vh 5vh;
+    border-radius: 10px;
+    position: sticky;
+    z-index: 1;
+}
+
+#data_input {
+    width: 50% !important;
+}
+
+.sla {
+    display: flex;
+}
+
+/* Estilos adicionais para o formulário expandido */
+.form-group {
+    margin-bottom: 20px;
+}
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        font-family: "Paytone One", sans-serif;
+    }
+
+.form-control {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+textarea.form-control {
+    min-height: 120px;
+    resize: vertical;
+}
+
+.btn-submit {
+    background-color: #a02d33;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    display: block;
+    margin: 30px auto 0;
+    width: 200px;
+    font-family: "Paytone One", sans-serif;
+}
+
+    .btn-submit:hover {
+        background-color: #C9434A;
+    }
+
+.form-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.form-col {
+    flex: 1;
+}
+
+.file-upload-container {
+    border: 2px dashed #666666;
+    border-radius: 4px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+    .file-upload-container i {
+        font-size: 40px;
+        color: #666;
+        margin-bottom: 10px;
+    }
+
+.form-note {
+    font-size: 14px;
+    color: #646464;
+    margin-top: 5px;
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.form-section-title {
+    font-size: 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid #555;
+    padding-bottom: 10px;
+    font-family: "Paytone One", sans-serif;
+}
+
+.form-section {
+    margin-bottom: 30px;
+}

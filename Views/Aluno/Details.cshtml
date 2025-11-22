@@ -1,0 +1,85 @@
+﻿@model Farol_Seguro.Models.Aluno
+
+@{
+    ViewData["Title"] = "Detalhes do Aluno";
+}
+
+<link href="~/css/header.css" rel="stylesheet" />
+<link href="~/css/Details.css" rel="stylesheet" />
+
+<div class="details-container">
+    <!-- Card de Detalhes -->
+    <div class="details-card">
+        <div class="details-card-header">
+            <h2 class="details-card-title">
+                <i class="fas fa-user-graduate"></i>
+                Detalhes do Aluno
+            </h2>
+        </div>
+        <div class="details-card-body">
+            <ul class="details-list">
+                <li class="detail-item">
+                    <div class="detail-icon">
+                        <i class="fas fa-hashtag"></i>
+                    </div>
+                    <div class="detail-content">
+                        <div class="detail-label">ID</div>
+                        <div class="detail-value">@Model.Id_Aluno</div>
+                    </div>
+                </li>
+                <li class="detail-item">
+                    <div class="detail-icon">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="detail-content">
+                        <div class="detail-label">Nome Completo</div>
+                        <div class="detail-value">@Model.Nome_Aluno</div>
+                    </div>
+                </li>
+                <li class="detail-item">
+                    <div class="detail-icon">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <div class="detail-content">
+                        <div class="detail-label">E-mail</div>
+                        <div class="detail-value">@Model.Email_Aluno</div>
+                    </div>
+                </li>
+                <li class="detail-item">
+                    <div class="detail-icon">
+                        <i class="fas fa-venus-mars"></i>
+                    </div>
+                    <div class="detail-content">
+                        <div class="detail-label">Gênero</div>
+                        <div class="detail-value">@Model.Genero_Aluno</div>
+                    </div>
+                </li>
+                <li class="detail-item">
+                    <div class="detail-icon">
+                        <i class="fas fa-birthday-cake"></i>
+                    </div>
+                    <div class="detail-content">
+                        <div class="detail-label">Data de Nascimento</div>
+                        <div class="detail-value">@Model.DataNascimento_Aluno.ToShortDateString()</div>
+                    </div>
+                </li>
+            </ul>
+
+            <!-- Botões de Ação -->
+            <div class="details-actions">
+                <a asp-action="Editar" asp-route-id="@Model.Id_Aluno" class="btn-details btn-edit">
+                    <i class="fas fa-edit"></i>
+                    Editar Aluno
+                </a>
+                <a asp-action="Index" class="btn-details btn-back">
+                    <i class="fas fa-arrow-left"></i>
+                    Voltar para Lista
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="~/js/menu_dropdown.js"></script>
+<script src="~/js/open-modal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>

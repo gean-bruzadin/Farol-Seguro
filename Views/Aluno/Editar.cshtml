@@ -1,0 +1,84 @@
+﻿@model Farol_Seguro.Models.Aluno
+
+@{
+    ViewData["Title"] = "Editar Aluno";
+}
+
+<link href="~/css/header.css" rel="stylesheet" />
+<link href="~/css/Form.css" rel="stylesheet" /> @* CSS GERAL DOS FORMS *@
+
+<div class="form-container">
+    <div class="form-section">
+        <h1 class="form-title">Editar Aluno</h1>
+
+        @* Exibição de mensagens de erro/sucesso *@
+        @if (TempData["MensagemErro"] != null)
+        {
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <strong>Erro!</strong> @TempData["MensagemErro"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
+        <form asp-action="Editar" method="post">
+            @* Sumário de Validação do Modelo *@
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <input type="hidden" asp-for="Id_Aluno" />
+
+            <div class="form-group">
+                <label asp-for="Nome_Aluno" class="form-label">Nome</label>
+                <input asp-for="Nome_Aluno" class="form-control" />
+                <span asp-validation-for="Nome_Aluno" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Email_Aluno" class="form-label">Email</label>
+                <input asp-for="Email_Aluno" type="email" class="form-control" />
+                <span asp-validation-for="Email_Aluno" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Senha_Aluno" class="form-label">Senha</label>
+                <input asp-for="Senha_Aluno" type="password" class="form-control" placeholder="Deixe em branco para manter a atual" />
+                <span asp-validation-for="Senha_Aluno" class="text-danger"></span>
+                <div class="form-help">Deixe em branco para manter a senha atual</div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-col">
+                    <div class="form-group">
+                        <label asp-for="Genero_Aluno" class="form-label">Gênero</label>
+                        <select asp-for="Genero_Aluno" class="form-control">
+                            <option value="">Selecione...</option>
+                            <option value="Masculino" selected="@(Model.Genero_Aluno == "Masculino")">Masculino</option>
+                            <option value="Feminino" selected="@(Model.Genero_Aluno == "Feminino")">Feminino</option>
+                            <option value="Outro" selected="@(Model.Genero_Aluno == "Outro")">Outro</option>
+                        </select>
+                        <span asp-validation-for="Genero_Aluno" class="text-danger"></span>
+                    </div>
+                </div>
+                
+                <div class="form-col">
+                    <div class="form-group">
+                        <label asp-for="DataNascimento_Aluno" class="form-label">Data de Nascimento</label>
+                        <input asp-for="DataNascimento_Aluno" type="date" class="form-control" />
+                        <span asp-validation-for="DataNascimento_Aluno" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="btn-group btn-group-center">
+                <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
+
+<script src="~/js/menu_dropdown.js"></script>
+<script src="~/js/open-modal.js"></script>

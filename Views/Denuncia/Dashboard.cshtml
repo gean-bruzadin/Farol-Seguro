@@ -1,0 +1,294 @@
+﻿@{
+    ViewData["Title"] = "Dashboard de Denúncias";
+
+    int[] mensalCriadas = ((int[])ViewBag.MensalCriadas) ?? new int[12];
+    int[] mensalResolvidas = ((int[])ViewBag.MensalResolvidas) ?? new int[12];
+    double[] mediaHorasPorMes = ((double[])ViewBag.MediaHorasPorMes) ?? new double[12];
+
+    int anoSelecionado = ViewBag.AnoSelecionado ?? DateTime.Now.Year;
+
+    var totalDenuncias = (int)ViewBag.Total;
+    var totalPendentes = (int)ViewBag.Pendentes;
+    var denunciasMes = (int)ViewBag.Mes;
+    var mediaTempoDias = (string)ViewBag.MediaTempoResolucaoDias;
+}
+
+<link href="~/css/header.css" rel="stylesheet" />
+
+<div class="container mt-4">
+    <h2><i class="bi bi-graph-up-arrow"></i> Dashboard de Estatísticas</h2>
+
+    <div class="d-flex gap-3 align-items-center mt-3 mb-2">
+        <form id="filtroAno" class="d-flex gap-2 align-items-center">
+            <label>Ano:</label>
+
+            <select id="selectAno" name="ano" class="form-select w-auto">
+                @for (int y = DateTime.Now.Year; y >= 2020; y--)
+                {
+                    @if (y == anoSelecionado)
+                    {
+                        <option value="@y" selected>@y</option>
+                    }
+                    else
+                    {
+                        <option value="@y">@y</option>
+                    }
+                }
+            </select>
+
+            <button type="button" id="btnAtualizar" class="btn btn-primary">Atualizar</button>
+        </form>
+
+        <div class="ms-auto">
+            <button id="exportCsv" class="btn btn-outline-secondary">Exportar CSV</button>
+            <button id="exportExcel" class="btn btn-outline-secondary">Exportar Excel</button>
+        </div>
+    </div>
+
+    <hr />
+
+    <div class="row">
+        <div class="col-md-3 mb-3">
+            <div class="card shadow h-100">
+                <div class="card-body">
+                    <h6>Total de Denúncias</h6>
+                    <h3>@totalDenuncias</h3>
+                </div>
+                <div class="card-footer"><small>Desde o início</small></div>
+            </div>
+        </div>
+
+        @if (totalPendentes > 0)
+        {
+            <div class="col-md-3 mb-3">
+                <div class="card shadow h-100" style="background: linear-gradient(90deg,#fff3cd,#ffe8a1);">
+                    <div class="card-body">
+                        <h6>Pendentes de Resposta</h6>
+                        <h3>@totalPendentes</h3>
+                    </div>
+                    <div class="card-footer"><small>Aguardando ação</small></div>
+                </div>
+            </div>
+        }
+
+        <div class="col-md-3 mb-3">
+            <div class="card shadow h-100" style="background: linear-gradient(90deg,#cff4fc,#bfefff);">
+                <div class="card-body">
+                    <h6>Denúncias no Mês</h6>
+                    <h3>@denunciasMes</h3>
+                </div>
+                <div class="card-footer"><small>@DateTime.Now.ToString("MMMM/yyyy")</small></div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card shadow h-100" style="background: linear-gradient(90deg,#d1e7dd,#b6dfc9);">
+                <div class="card-body">
+                    <h6>Tempo Médio de Resolução</h6>
+                    <h3>@(string.IsNullOrEmpty(mediaTempoDias) ? "N/A" : mediaTempoDias)</h3>
+                </div>
+                <div class="card-footer"><small>Desde o início da análise até a conclusão</small></div>
+            </div>
+        </div>
+
+    <div class="row mt-4">
+        <div class="col-md-10 offset-md-1">
+            <div class="card p-3 shadow">
+                <h5>Denúncias Criadas vs Resolvidas — <span id="tituloAno">@anoSelecionado</span></h5>
+                <canvas id="chartCriadasResolvidas" style="height: 380px;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-10 offset-md-1">
+            <div class="card p-3 shadow">
+                <h5>Média de Tempo de Resolução por Mês (dias) — <span id="tituloAno2">@anoSelecionado</span></h5>
+                <canvas id="chartTempoResolucao" style="height: 380px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+        <script>
+            // Os arrays de horas permanecem como variáveis globais
+            var mensalCriadas = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(mensalCriadas));
+            var mensalResolvidas = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(mensalResolvidas));
+            var mediaHorasPorMes = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(mediaHorasPorMes)); // Média em horas
+
+            const labelsMeses = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
+            // Função original que converte horas para dias decimais (mantida apenas para a altura da barra)
+            function horasToDiasArray(arr) {
+                return arr.map(h => +(h / 24).toFixed(1));
+            }
+
+            //  NOVO: Função para formatar o total de horas em Dias e Horas
+            function formatarHorasParaDiasHoras(totalHoras) {
+                if (totalHoras <= 0) return "0 horas";
+
+                const horasPorDia = 24;
+
+                // Cálculo
+                const dias = Math.floor(totalHoras / horasPorDia);
+                // Arredondamos a hora restante para evitar "5.999 horas"
+                const horasRestantes = Math.round(totalHoras % horasPorDia);
+
+                let resultado = "";
+
+                if (dias > 0) {
+                    resultado += `${dias} dia${dias > 1 ? "s" : ""}`;
+                }
+
+                if (horasRestantes > 0) {
+                    if (dias > 0) {
+                        resultado += " e ";
+                    }
+                    resultado += `${horasRestantes} hora${horasRestantes > 1 ? "s" : ""}`;
+                }
+
+                // Se a duração for muito curta (menos de 1 hora), mostra minutos se for o caso
+                if (dias === 0 && horasRestantes === 0 && totalHoras > 0) {
+                    const minutos = Math.round(totalHoras * 60);
+                    return minutos > 0 ? `${minutos} min` : "0 min";
+                }
+
+                return resultado || "0 horas";
+            }
+
+            // --- CHART CRIADAS/RESOLVIDAS (Sem alterações no Tooltip) ---
+            const ctx1 = document.getElementById('chartCriadasResolvidas').getContext('2d');
+
+            // ... (Definições de gradCriadas e gradResolvidas) ...
+            const gradCriadas = ctx1.createLinearGradient(0,0,0,400);
+            gradCriadas.addColorStop(0, 'rgba(13,110,253,0.28)');
+            gradCriadas.addColorStop(1, 'rgba(13,110,253,0.02)');
+
+            const gradResolvidas = ctx1.createLinearGradient(0,0,0,400);
+            gradResolvidas.addColorStop(0, 'rgba(25,135,84,0.28)');
+            gradResolvidas.addColorStop(1, 'rgba(25,135,84,0.02)');
+
+            let chartCriadas = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: labelsMeses,
+                    datasets: [
+                        {
+                            label: 'Criadas',
+                            data: mensalCriadas,
+                            borderColor: '#0d6efd',
+                            backgroundColor: gradCriadas,
+                            fill: true,
+                            tension: 0.25,
+                            pointRadius: 4
+                        },
+                        {
+                            label: 'Resolvidas',
+                            data: mensalResolvidas,
+                            borderColor: '#198754',
+                            backgroundColor: gradResolvidas,
+                            fill: true,
+                            tension: 0.25,
+                            pointRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'top' }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+            // -----------------------------------------------------------
+
+
+            // --- CHART TEMPO RESOLUÇÃO (Correção do Tooltip) ---
+            const ctx2 = document.getElementById('chartTempoResolucao').getContext('2d');
+            let diasPorMes = horasToDiasArray(mediaHorasPorMes);
+
+            let chartTempo = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: labelsMeses,
+                    datasets: [{
+                        label: 'Média de Resolução', // Rótulo do Dataset ajustado
+                        data: diasPorMes,
+                        backgroundColor: 'rgba(253,126,20,0.85)',
+                        borderColor: 'rgba(253,126,20,1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: { y: { beginAtZero: true } },
+                    plugins: {
+                        // CORREÇÃO PRINCIPAL: Implementação do Tooltip Callback
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+
+                                    // Busca o valor original em HORAS a partir do array global
+                                    const horasOriginais = mediaHorasPorMes[context.dataIndex];
+
+                                    // Aplica a nova função de formatação
+                                    label += formatarHorasParaDiasHoras(horasOriginais);
+                                    return label;
+                                },
+                                 // OPCIONAL: Mudar o título do eixo Y (se for necessário manter 'dias' nele)
+                                 // title: (tooltipItems) => {
+                                 //     return labelsMeses[tooltipItems[0].dataIndex];
+                                 // }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // --- LÓGICA DE ATUALIZAÇÃO AJAX ---
+            document.getElementById("btnAtualizar").addEventListener("click", async () => {
+                const ano = document.getElementById("selectAno").value;
+
+                const res = await fetch(`/Denuncia/GetDashboardData?ano=${ano}`);
+                const data = await res.json();
+
+                //  CRÍTICO: Atualiza a variável global mediaHorasPorMes antes de atualizar o gráfico
+                mediaHorasPorMes = data.mediaHoras;
+
+                // Atualizar gráficos Criadas/Resolvidas
+                chartCriadas.data.datasets[0].data = data.criadas;
+                chartCriadas.data.datasets[1].data = data.resolvidas;
+                chartCriadas.update();
+
+                // Atualizar barras do gráfico de Tempo de Resolução (continua em dias decimais para a altura)
+                chartTempo.data.datasets[0].data = horasToDiasArray(data.mediaHoras);
+                chartTempo.update();
+
+                document.getElementById("tituloAno").innerText = ano;
+                document.getElementById("tituloAno2").innerText = ano;
+            });
+
+            // --- LÓGICA DE EXPORTAÇÃO (Mantida) ---
+            document.getElementById('exportCsv').addEventListener('click', () => {
+                const ano = document.getElementById('selectAno').value;
+                window.location.href = `/Denuncia/ExportCsv?ano=${ano}`;
+            });
+
+            document.getElementById('exportExcel').addEventListener('click', () => {
+                const ano = document.getElementById('selectAno').value;
+                window.location.href = `/Denuncia/ExportExcel?ano=${ano}`;
+            });
+        </script>
+
+}

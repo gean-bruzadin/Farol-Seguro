@@ -1,0 +1,78 @@
+﻿@model IEnumerable<Farol_Seguro.Models.Notificacao>
+
+@{
+    ViewData["Title"] = "Minhas Notificações";
+}
+
+<link href="~/css/header.css" rel="stylesheet" />
+
+<h2 class="mt-4 mb-4">@ViewData["Title"]</h2>
+
+@* =======================================================
+    BLOCO PARA EXIBIR MENSAGENS DE ALERTA (SUCESSO/ERRO)
+======================================================== *@
+@{
+    if (TempData["MensagemSucesso"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <strong>Sucesso!</strong> @TempData["MensagemSucesso"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    else if (TempData["MensagemErro"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Erro!</strong> @TempData["MensagemErro"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+}
+@* =======================================================
+    FIM DO BLOCO DE MENSAGENS
+======================================================== *@
+
+<hr />
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info" role="alert">
+        <i class="fas fa-info-circle"></i> Não há notificações para exibir.
+    </div>
+}
+else
+{
+    <div class="list-group">
+        @foreach (var item in Model)
+        {
+            // Define classes de estilo
+            string itemClass = item.Lida ? "list-group-item-light" : "list-group-item-primary";
+            string badgeClass = item.Lida ? "text-secondary" : "bg-primary text-white"; // Adicionado text-white para contraste
+
+            @* 🚨 Ponto Importante: Confirme se o asp-controller está correto aqui *@
+            <a asp-controller="Denuncia" asp-action="Detalhes" asp-route-id="@item.Id_Denuncia" class="list-group-item list-group-item-action @itemClass mb-2 border rounded-3">
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1">
+                        @Html.DisplayFor(modelItem => item.Mensagem)
+                    </h5>
+                    <span class="badge @badgeClass p-2">
+                        @if (!item.Lida)
+                        {
+                            <i class="fas fa-exclamation-circle">Nova</i>
+                        }
+                        else
+                        {
+                            <i class="fas fa-check">Lida</i>
+                        }
+                    </span>
+                </div>
+                <p class="mb-1">
+                    Denúncia #@(item.Id_Denuncia): Status Atual: <strong>@(item.Denuncia?.Status_Denuncia ?? "N/A")</strong>
+                </p>
+                <small class="text-muted">Recebida em: @item.DataCriacao.ToString("dd/MM/yyyy HH:mm")</small>
+            </a>
+        }
+    </div>
+}
+<div class="mt-4">
+    <a asp-action="MinhasDenuncias" class="btn btn-secondary">Voltar para Minhas Denúncias</a>
+</div>

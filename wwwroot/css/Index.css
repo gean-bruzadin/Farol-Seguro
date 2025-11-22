@@ -1,23 +1,11 @@
-﻿﻿ /* ===== VARIÁVEIS DE CORES ===== */
-:root {
-    --primary-red: #8B0000;
-    --secondary-red: #A02D33;
-    --light-red: #FFF5F5;
-    --dark-gray: #2D3748;
-    --medium-gray: #4A5568;
-    --light-gray: #F7FAFC;
-    --white: #FFFFFF;
-    --success: #28A745;
-    --warning: #FFC107;
-    --info: #17A2B8;
-    --danger: #DC3545;
-}
+﻿/* ===== CORES FIXAS (SEM VARIÁVEIS) ===== */
+/* Removido :root e substituído por cores diretas */
 
 /* ===== ESTILOS GERAIS ===== */
 body {
-    background-color: #f8f9fa;
+    background-color: #f0e7d3;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    color: var(--dark-gray);
+    color: #2D3748; /* dark-gray */
 }
 
 .index-container {
@@ -28,8 +16,8 @@ body {
 
 /* ===== HEADER DA PÁGINA ===== */
 .page-header {
-    background: linear-gradient(135deg, var(--primary-red), var(--secondary-red));
-    color: var(--white);
+    background: linear-gradient(135deg, #8B0000, #A02D33); /* primary-red, secondary-red */
+    color: #FFFFFF; /* white */
     padding: 30px;
     border-radius: 15px;
     margin-bottom: 30px;
@@ -71,11 +59,11 @@ body {
 }
 
 .stat-card {
-    background: var(--white);
+    background: #FFFFFF; /* white */
     padding: 25px;
     border-radius: 12px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-    border-left: 4px solid var(--primary-red);
+    border-left: 4px solid #8B0000; /* primary-red */
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
@@ -87,12 +75,12 @@ body {
 .stat-number {
     font-size: 2.5rem;
     font-weight: 700;
-    color: var(--primary-red);
+    color: #8B0000; /* primary-red */
     margin-bottom: 5px;
 }
 
 .stat-label {
-    color: var(--medium-gray);
+    color: #4A5568; /* medium-gray */
     font-size: 0.9rem;
     text-transform: uppercase;
     letter-spacing: 1px;
@@ -100,7 +88,7 @@ body {
 
 /* ===== BARRA DE AÇÕES ===== */
 .action-bar {
-    background: var(--white);
+    background: #FFFFFF; /* white */
     padding: 20px;
     border-radius: 12px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
@@ -113,8 +101,8 @@ body {
 }
 
 .btn-new {
-    background: linear-gradient(135deg, var(--primary-red), var(--secondary-red));
-    color: var(--white);
+    background: linear-gradient(135deg, #8B0000, #A02D33); /* primary-red, secondary-red */
+    color: #FFFFFF; /* white */
     border: none;
     padding: 12px 25px;
     border-radius: 8px;
@@ -130,12 +118,12 @@ body {
     .btn-new:hover {
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(139, 0, 0, 0.4);
-        color: var(--white);
+        color: #FFFFFF; /* white */
     }
 
 /* ===== TABELA ESTILIZADA ===== */
 .table-container {
-    background: var(--white);
+    background: #FFFFFF; /* white */
     border-radius: 12px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
     overflow: hidden;
@@ -148,8 +136,8 @@ body {
 }
 
     .custom-table thead {
-        background: linear-gradient(135deg, var(--primary-red), var(--secondary-red));
-        color: var(--white);
+        background: linear-gradient(135deg, #8B0000, #A02D33); /* primary-red, secondary-red */
+        color: #FFFFFF; /* white */
     }
 
     .custom-table th {
@@ -168,7 +156,7 @@ body {
     }
 
         .custom-table tbody tr:hover {
-            background-color: var(--light-red);
+            background-color: #FFF5F5; /* light-red */
         }
 
     .custom-table td {
@@ -199,18 +187,18 @@ body {
 }
 
 .btn-edit {
-    background: var(--warning);
-    color: var(--dark-gray);
+    background: #FFC107; /* warning */
+    color: #2D3748; /* dark-gray */
 }
 
 .btn-details {
-    background: var(--info);
-    color: var(--white);
+    background: #17A2B8; /* info */
+    color: #FFFFFF; /* white */
 }
 
 .btn-delete {
-    background: var(--danger);
-    color: var(--white);
+    background: #DC3545; /* danger */
+    color: #FFFFFF; /* white */
 }
 
 .btn-action:hover {
@@ -222,7 +210,7 @@ body {
 .empty-state {
     text-align: center;
     padding: 60px 20px;
-    color: var(--medium-gray);
+    color: #4A5568; /* medium-gray */
 }
 
     .empty-state i {
@@ -234,7 +222,7 @@ body {
     .empty-state h3 {
         font-size: 1.5rem;
         margin-bottom: 10px;
-        color: var(--dark-gray);
+        color: #2D3748; /* dark-gray */
     }
 
 /* ===== ALERTAS ===== */
@@ -249,13 +237,13 @@ body {
 .alert-success {
     background: linear-gradient(135deg, #d4edda, #c3e6cb);
     color: #155724;
-    border-left: 4px solid var(--success);
+    border-left: 4px solid #28A745; /* success */
 }
 
 .alert-danger {
     background: linear-gradient(135deg, #f8d7da, #f1b0b7);
     color: #721c24;
-    border-left: 4px solid var(--danger);
+    border-left: 4px solid #DC3545; /* danger */
 }
 
 /* ===== RESPONSIVIDADE ===== */
@@ -320,6 +308,6 @@ body {
             text-align: left;
             text-transform: uppercase;
             font-size: 0.8rem;
-            color: var(--medium-gray);
+            color: #4A5568; /* medium-gray */
         }
 }

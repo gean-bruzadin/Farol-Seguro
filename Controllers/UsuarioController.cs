@@ -8,27 +8,23 @@ using BCrypt.Net;
 using System;
 using Microsoft.AspNetCore.Authorization;
 using System.Linq;
-using Microsoft.Extensions.Options; // NOVO
+using Microsoft.Extensions.Options;
 
 namespace Farol_Seguro.Controllers
 {
     [Authorize]
     public class UsuarioController : Controller
     {
-        // VARIÁVEL PARA GUARDAR A CHAVE INJETADA DO appsettings.json
         private readonly string _codigoSecreto;
         private readonly DbConfig _context;
 
-        // NOVO CONSTRUTOR: Injetando DbConfig e IOptions para a configuração
         public UsuarioController(DbConfig context, IOptions<AcessoAdminConfig> acessoAdminConfig)
         {
             _context = context;
-            // Carrega o valor do appsettings.json
             _codigoSecreto = acessoAdminConfig.Value.CodigoSecreto;
         }
 
-        // --- AÇÕES PROTEGIDAS POR [Authorize] (PADRÃO DO CONTROLLER) ---
-
+        // --- AÇÕES PROTEGIDAS POR [Authorize] ---
         public async Task<IActionResult> Index()
         {
             var usuarios = _context.Usuarios.Include(u => u.Nivel);
@@ -45,7 +41,6 @@ namespace Farol_Seguro.Controllers
             return View(usuario);
         }
 
-        // GET: Usuario/Edit/5
         public async Task<IActionResult> Editar(int? id)
         {
             if (id == null) return NotFound();
@@ -57,7 +52,6 @@ namespace Farol_Seguro.Controllers
             return View(usuario);
         }
 
-        // POST: Usuario/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Editar(int id, Usuario usuario)
@@ -115,7 +109,6 @@ namespace Farol_Seguro.Controllers
             return View(usuario);
         }
 
-        // GET: Usuario/Delete/5
         public async Task<IActionResult> Deletar(int? id)
         {
             if (id == null) return NotFound();
@@ -126,7 +119,6 @@ namespace Farol_Seguro.Controllers
             return View(usuario);
         }
 
-        // POST: Usuario/Delete/5
         [HttpPost, ActionName("Deletar")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeletarConfirmado(int id)
@@ -160,34 +152,28 @@ namespace Farol_Seguro.Controllers
 
         // --- AÇÕES DE CRIAÇÃO DO PRIMEIRO ADMIN (BOOTSTRAP) ---
 
-        // GET: Usuario/AcessoAdmin (Nova tela para digitar o código)
         [AllowAnonymous]
         public async Task<IActionResult> AcessoAdmin()
         {
-            // Se já existem usuários, redireciona para o login (fim do bootstrap)
             if (await _context.Usuarios.AnyAsync())
             {
                 TempData["MensagemErro"] = "O registro por código secreto está desativado. Por favor, faça login com uma conta de administrador.";
-                // Assume que a rota de Login é Conta/Login
-                return RedirectToRoute(new { controller = "Conta", action = "Login" });
+                return RedirectToRoute(new { controller = "Autenticacao", action = "Login" });
             }
             return View();
         }
 
-        // POST: Usuario/AcessoAdmin - Checa o código
         [HttpPost]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AcessoAdmin(string codigo)
         {
-            // Se a tabela não estiver vazia, redireciona para o Login.
             if (await _context.Usuarios.AnyAsync())
             {
                 TempData["MensagemErro"] = "O registro por código secreto está desativado. Por favor, faça login com uma conta de administrador.";
-                return RedirectToRoute(new { controller = "Conta", action = "Login" });
+                return RedirectToRoute(new { controller = "Autenticacao", action = "Login" });
             }
 
-            // Compara com a chave injetada
             if (codigo == _codigoSecreto)
             {
                 TempData["AcessoPermitido"] = true;
@@ -205,19 +191,19 @@ namespace Farol_Seguro.Controllers
         {
             bool jaExistemUsuarios = await _context.Usuarios.AnyAsync();
 
-            // 1. SE JÁ EXISTEM USUÁRIOS: Redireciona para Login
             if (jaExistemUsuarios)
             {
                 TempData["MensagemErro"] = "Registro de novos administradores está bloqueado. Por favor, faça login com uma conta de administrador existente para adicionar mais.";
-                return RedirectToRoute(new { controller = "Conta", action = "Login" });
+                return RedirectToRoute(new { controller = "Autenticacao", action = "Login" });
             }
 
-            // 2. SE É O PRIMEIRO REGISTRO (Bootstrap): Requer que o código secreto tenha sido inserido.
             if (TempData["AcessoPermitido"] == null || (bool)TempData["AcessoPermitido"] != true)
             {
                 TempData["MensagemErro"] = "Você não pode acessar essa área. Insira o código de acesso de Administrador.";
                 return RedirectToAction(nameof(AcessoAdmin));
             }
+
+            TempData.Keep("AcessoPermitido");
 
             return View();
         }
@@ -231,18 +217,17 @@ namespace Farol_Seguro.Controllers
         {
             bool jaExistemUsuarios = await _context.Usuarios.AnyAsync();
 
+            // Lógica de proteção (MANTIDA)
             if (jaExistemUsuarios)
             {
-                // Se JÁ existem usuários, a criação SÓ pode ser feita por um admin LOGADO.
                 if (!User.Identity.IsAuthenticated)
                 {
                     TempData["MensagemErro"] = "Registro de novos administradores está desativado. Por favor, faça login com uma conta de Administrador existente para adicionar mais.";
-                    return RedirectToRoute(new { controller = "Conta", action = "Login" });
+                    return RedirectToRoute(new { controller = "Autenticacao", action = "Login" });
                 }
             }
             else
             {
-                // Se é o PRIMEIRO USUÁRIO, exige que o código de acesso tenha sido inserido.
                 if (TempData["AcessoPermitido"] == null || (bool)TempData["AcessoPermitido"] != true)
                 {
                     TempData["MensagemErro"] = "Acesso negado. Necessário inserir o código de segurança antes de prosseguir.";
@@ -250,27 +235,40 @@ namespace Farol_Seguro.Controllers
                 }
             }
 
+            // ⭐ NOVO: VALIDAÇÃO MANUAL BÁSICA DE CAMPOS CRÍTICOS (SUBSTITUI O ModelState.IsValid)
+            if (string.IsNullOrEmpty(usuario.Nome_Usuario) || string.IsNullOrEmpty(usuario.Email_Usuario) || string.IsNullOrEmpty(usuario.Senha_Usuario))
+            {
+                TempData["MensagemErro"] = "Erro! Por favor, **preencha todos os campos** (Nome, E-mail e Senha) e tente novamente.";
+                return View(usuario);
+            }
+
             // Lógica de Criação
             try
             {
                 usuario.Id_Nivel = 3;
 
-                if (!string.IsNullOrEmpty(usuario.Senha_Usuario))
-                {
-                    usuario.Senha_Usuario = BCrypt.Net.BCrypt.HashPassword(usuario.Senha_Usuario);
-                }
+                // Aplica o Hash na Senha
+                usuario.Senha_Usuario = BCrypt.Net.BCrypt.HashPassword(usuario.Senha_Usuario);
 
                 _context.Add(usuario);
                 await _context.SaveChangesAsync();
 
                 TempData["MensagemSucesso"] = $"O Administrador '{usuario.Nome_Usuario}' foi criado com sucesso!";
+
+                if (!jaExistemUsuarios)
+                {
+                    return RedirectToRoute(new { controller = "Autenticacao", action = "Login" });
+                }
+
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
             {
-                TempData["MensagemErro"] = $"Falha ao criar o Administrador. Erro: {ex.Message}";
+                // Este catch pegará erros de banco de dados, como violação de chave única (ex: e-mail já existe)
+                TempData["MensagemErro"] = $"Falha ao criar o Administrador. Possível erro: E-mail já em uso ou dados inválidos para o banco. Erro: {ex.Message}";
             }
 
+            // Retorna a view com os dados preenchidos em caso de erro no Try-Catch ou validação manual
             return View(usuario);
         }
     }

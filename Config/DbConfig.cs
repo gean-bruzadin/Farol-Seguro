@@ -29,11 +29,16 @@ namespace Farol_Seguro.Config
         {
             base.OnModelCreating(modelBuilder);
 
+            // ----------------------------
+            // SEED DE NÍVEIS
+            // ----------------------------
             modelBuilder.Entity<Nivel>().HasData(
                 new Nivel { Id_Nivel = 1, Nome_Nivel = "Aluno" },
                 new Nivel { Id_Nivel = 2, Nome_Nivel = "Funcionario" },
                 new Nivel { Id_Nivel = 3, Nome_Nivel = "Admin" }
             );
+
+
 
             // 🔹 Relacionamento N:N Denuncia ↔ Testemunha
             modelBuilder.Entity<DenunciaTestemunha>()

@@ -4,10 +4,12 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
+#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
+
 namespace Farol_Seguro.Migrations
 {
     /// <inheritdoc />
-    public partial class AdicionarCamposBloqueioDenunciaFalsa : Migration
+    public partial class SeedNiveisIniciais : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -413,6 +415,16 @@ namespace Farol_Seguro.Migrations
                         onDelete: ReferentialAction.Cascade);
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.InsertData(
+                table: "Niveis",
+                columns: new[] { "Id_Nivel", "Nome_Nivel" },
+                values: new object[,]
+                {
+                    { 1, "Aluno" },
+                    { 2, "Funcionario" },
+                    { 3, "Admin" }
+                });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Alunos_Id_Nivel",

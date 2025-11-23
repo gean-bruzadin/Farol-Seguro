@@ -348,6 +348,23 @@ namespace Farol_Seguro.Migrations
                     b.HasKey("Id_Nivel");
 
                     b.ToTable("Niveis");
+
+                    b.HasData(
+                        new
+                        {
+                            Id_Nivel = 1,
+                            Nome_Nivel = "Aluno"
+                        },
+                        new
+                        {
+                            Id_Nivel = 2,
+                            Nome_Nivel = "Funcionario"
+                        },
+                        new
+                        {
+                            Id_Nivel = 3,
+                            Nome_Nivel = "Admin"
+                        });
                 });
 
             modelBuilder.Entity("Farol_Seguro.Models.Notificacao", b =>

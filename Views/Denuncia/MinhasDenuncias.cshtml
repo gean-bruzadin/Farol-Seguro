@@ -87,10 +87,27 @@
                     <h6>Anexos</h6>
                     @if (item.Anexos != null && item.Anexos.Any())
                     {
-                        <ul>
+                        <ul class="list-group list-group-flush">
                             @foreach (var a in item.Anexos)
                             {
-                                <li><a href="@a.Caminho_Anexo" target="_blank">@a.Tipo_Anexo</a></li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <a href="@a.Caminho_Anexo" target="_blank" download class="text-decoration-none">
+                                        <i class="fas fa-file-download me-2"></i> @a.Tipo_Anexo
+                                    </a>
+
+                                    @* Ação de Exclusão: Visível apenas se a denúncia não for falsa e não estiver encerrada/resolvida *@
+                                    @if (!item.IsFalsa && item.Status_Denuncia != "Resolvida" && item.Status_Denuncia != "Encerrada")
+                                    {
+                                        <form asp-action="ExcluirAnexo" method="post" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja EXCLUIR este anexo?');">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="idAnexo" value="@a.Id_Anexo" />
+                                            <input type="hidden" name="idDenuncia" value="@item.Id_Denuncia" />
+                                            <button type="submit" class="btn btn-danger btn-sm" title="Excluir Anexo">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                </li>
                             }
                         </ul>
                     }

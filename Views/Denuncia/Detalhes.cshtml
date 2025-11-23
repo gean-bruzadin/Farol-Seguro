@@ -129,9 +129,19 @@
                         <div class="attachments-list">
                             @foreach (var a in Model.Anexos)
                             {
-                                <div class="attachment-item">
-                                    <i class="fas fa-file"></i>
-                                    <a href="@a.Caminho_Anexo" target="_blank">@(a.NomeOriginal_Anexo ?? a.Tipo_Anexo)</a>
+                                <div class="attachment-item d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+
+                                    @* 1. ÍCONE E LINK DE DOWNLOAD (Permanece) *@
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-file me-2"></i>
+                                        <a href="@a.Caminho_Anexo" target="_blank" download class="text-decoration-none me-3">
+                                            @(a.NomeOriginal_Anexo ?? a.Tipo_Anexo)
+                                        </a>
+                                        <small class="text-muted">(@a.Tipo_Anexo)</small>
+                                    </div>
+
+                                    @* 2. BOTÃO DE EXCLUSÃO - REMOVIDO *@
+
                                 </div>
                             }
                         </div>

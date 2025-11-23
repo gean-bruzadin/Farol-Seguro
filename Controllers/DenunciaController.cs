@@ -1518,7 +1518,30 @@ namespace Farol_Seguro.Controllers
             // Substitua "MinhasNotificacoes" pelo nome real da sua Action que exibe a lista.
             return RedirectToAction(nameof(MinhasNotificacoes));
         }
-        
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ExcluirAnexo(int idAnexo, int idDenuncia)
+        {
+            // 1. Encontre o Anexo
+            var anexo = await _context.Anexos.FirstOrDefaultAsync(a => a.Id_Anexo == idAnexo && a.Id_Denuncia == idDenuncia);
+
+            if (anexo == null)
+            {
+                TempData["MensagemErro"] = "Anexo não encontrado.";
+                return RedirectToAction(nameof(Detalhes), new { id = idDenuncia });
+            }
+
+            // 2. (OPCIONAL mas RECOMENDADO) Verifique a permissão (aluno dono ou funcionário)
+
+            // 3. Exclua o arquivo físico do servidor (usando IWebHostEnvironment) - LÓGICA DO ARQUIVO FÍSICO AQUI
+
+            // 4. Exclua o registro do banco de dados
+            _context.Anexos.Remove(anexo);
+            await _context.SaveChangesAsync();
+
+            TempData["MensagemSucesso"] = "Anexo excluído com sucesso!";
+            return RedirectToAction(nameof(Detalhes), new { id = idDenuncia });
+        }
 
     }
 }

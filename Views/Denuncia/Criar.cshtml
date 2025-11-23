@@ -8,6 +8,31 @@
 <link href="~/css/denuncia.css" rel="stylesheet" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" integrity="sha512-..." crossorigin="anonymous" />
 
+<style>
+    .file-upload-container {
+        /* ... suas regras de estilo de borda, padding, etc. */
+        position: relative; /* ESSENCIAL */
+        overflow: hidden;
+    }
+
+        /* O INPUT DEVE ESTAR INVISÍVEL, MAS COM Z-INDEX MAIS BAIXO (z-index: 1 é suficiente) */
+        .file-upload-container input[type="file"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 1; /* O input deve ter um z-index baixo para ser coberto */
+        }
+
+    /* NOVO: A área de visualização e o botão de exclusão devem ter um z-index ALTO! */
+    .anexos-display, .anexos-display button {
+        position: relative; /* Necessário para que z-index funcione */
+        z-index: 20; /* Z-index alto para sobrepor o input e ser clicável */
+    }
+</style>
 
 @* =======================================================
     BLOCO PARA EXIBIR MENSAGENS DE ALERTA (SUCESSO/ERRO)
@@ -100,7 +125,7 @@
             <button type="button" class="btn btn-secondary mb-3" onclick="adicionarTestemunha()">Adicionar Outra Testemunha</button>
         </div>
 
-        <div class="form-section">
+        <<div class="form-section">
             <h2 class="form-section-title">
                 <label for="arquivos" class="form-label"> <i class="fas fa-paperclip"></i> Anexos (Fotos, vídeos, áudios)</label>
             </h2>
@@ -108,9 +133,16 @@
             <div class="file-upload-container">
                 <i class="fas fa-cloud-upload-alt"></i>
                 <p>Arraste arquivos aqui ou clique para selecionar</p>
+
+                @* INPUT CONTINUA INVISÍVEL, COBRINDO A ÁREA CLICÁVEL *@
                 <input type="file" name="anexosArquivos" class="form-control" id="arquivos" multiple />
-                <div class="form-note" id="fileNote">
-                    Formatos aceitos: PDF, JPG, PNG, MP4, MP3 (Máx. 10MB por arquivo). **Opcional.**
+
+                @* ADICIONEI UMA DIV DE EXIBIÇÃO EXTERNA PARA CONTROLE DE Z-INDEX *@
+                <div class="anexos-display">
+                    <div class="form-note" id="fileNote">
+                        Formatos aceitos: PDF, JPG, PNG, MP4, MP3 (Máx. 10MB por arquivo). **Opcional.**
+                    </div>
+                    <span id="fileNamesDisplay" class="mt-2 text-primary small"></span>
                 </div>
             </div>
         </div>
@@ -119,6 +151,9 @@
     </form>
 </div>
 
+@* =======================================================
+    BLOCO DE SCRIPTS CONSOLIDADO E CORRIGIDO
+======================================================== *@
 <script src="~/js/menu_dropdown.js"></script>
 <script src="~/js/open-modal.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -126,32 +161,132 @@
 
 <script>
     let testemunhaCount = 1;
+     // VARIÁVEL GLOBAL PARA ARMAZENAR ARQUIVOS ACUMULADOS
+     const arquivosSelecionados = new DataTransfer();
 
-    function adicionarTestemunha() {
-        testemunhaCount++;
-        var container = document.getElementById("testemunhasContainer");
-        var div = document.createElement("div");
-        div.classList.add("mb-2");
-        div.innerHTML = `
-            <hr class="mt-2 mb-2"/>
-            <label>Testemunha ${testemunhaCount}</label>
-            <input type="text" name="Nome_Testemunha" placeholder="Nome da Testemunha ${testemunhaCount} (Opcional)" class="form-control mb-1"/>
-            <input type="text" name="Telefone_Testemunha" placeholder="Telefone da Testemunha ${testemunhaCount}" class="form-control"/>
-        `;
-        container.appendChild(div);
-    }
+     // Função única para adicionar testemunha
+     function adicionarTestemunha() {
+         testemunhaCount++;
+         var container = document.getElementById("testemunhasContainer");
+         var div = document.createElement("div");
+         div.classList.add("mb-2");
+         div.innerHTML = `
+             <hr class="mt-2 mb-2"/>
+             <label>Testemunha ${testemunhaCount}</label>
+             <input type="text" name="Nome_Testemunha" placeholder="Nome da Testemunha ${testemunhaCount} (Opcional)" class="form-control mb-1"/>
+             <input type="text" name="Telefone_Testemunha" placeholder="Telefone da Testemunha ${testemunhaCount}" class="form-control"/>
+         `;
+         container.appendChild(div);
+     }
 
-    // Pré-visualização de arquivos selecionados
-    document.getElementById('arquivos').addEventListener('change', function() {
-        const fileInput = this;
-        const note = document.getElementById('fileNote');
+     // =======================================================
+     // FUNÇÃO PARA REMOVER UM ARQUIVO DA LISTA CUMULATIVA
+     // =======================================================
+     function removerAnexo(index) {
+         // Remove o item pelo índice na lista acumulada
+         arquivosSelecionados.items.remove(index);
 
+         // Atualiza o input original com a nova lista (sem o arquivo removido)
+         const fileInput = document.getElementById('arquivos');
+         fileInput.files = arquivosSelecionados.files;
+
+         // Renderiza a lista novamente para atualizar a interface
+         renderizarListaAnexos(fileInput, document.getElementById('fileNote'), document.getElementById('fileNamesDisplay'));
+     }
+
+     // =======================================================
+     // FUNÇÃO AUXILIAR PARA RENDERIZAR A LISTA DE ANEXOS
+     // =======================================================
+     function renderizarListaAnexos(fileInput, note, display) {
+         if (fileInput.files.length > 0) {
+             const fileCount = fileInput.files.length;
+
+             // Inicia a lista de nomes dos arquivos selecionados
+             let fileListHtml = `
+                 <i class="fas fa-check-circle text-success me-1"></i>
+                 <strong>${fileCount} arquivo(s) selecionado(s):</strong><br>
+                 <div class="list-group list-group-flush mt-2">
+             `;
+
+             Array.from(fileInput.files).forEach((file, index) => {
+                 fileListHtml += `
+                     <div class="list-group-item d-flex justify-content-between align-items-center p-1">
+                         <span class="small text-truncate me-2">${file.name}</span>
+                         <button type="button" class="btn btn-danger btn-sm"
+                                 onclick="removerAnexo(${index})"
+                                 title="Remover anexo">
+                             <i class="fas fa-trash-alt"></i>
+                         </button>
+                     </div>
+                 `;
+             });
+
+             fileListHtml += `</div>`;
+
+             display.innerHTML = fileListHtml;
+             note.style.display = 'none'; // Esconde a nota de formato
+         } else {
+             display.innerHTML = '';
+             note.style.display = 'block'; // Mostra a nota de formato original
+         }
+     }
+
+
+     // =======================================================
+     // EVENTO DE MUDANÇA (AGORA SÓ ADICIONA E CHAMA A RENDERIZAÇÃO)
+     // =======================================================
+     document.getElementById('arquivos').addEventListener('change', function(e) {
+         const fileInput = this;
+         const note = document.getElementById('fileNote');
+         const display = document.getElementById('fileNamesDisplay');
+
+         // 1. ADICIONA OS NOVOS ARQUIVOS À VARIÁVEL GLOBAL
+         Array.from(e.target.files).forEach(file => {
+              // Você pode adicionar uma validação aqui para duplicatas se necessário
+              arquivosSelecionados.items.add(file);
+         });
+
+         // 2. ATUALIZA O INPUT ORIGINAL COM A LISTA ACUMULADA
+         fileInput.files = arquivosSelecionados.files;
+
+         // 3. RENDERIZA A LISTA NA TELA
+         renderizarListaAnexos(fileInput, note, display);
+
+         // 4. Limpa o valor do input para permitir re-seleção
+         e.target.value = null;
+     });
+
+         function renderizarListaAnexos(fileInput, note, display) {
         if (fileInput.files.length > 0) {
-            let fileNames = Array.from(fileInput.files).map(file => file.name).join(', ');
-            note.innerHTML = `Arquivos selecionados (${fileInput.files.length}): <strong>${fileNames}</strong>`;
-        } else {
-            note.innerHTML = `Formatos aceitos: PDF, JPG, PNG, MP4, MP3 (Máx. 10MB por arquivo). <strong>Opcional.</strong>`;
-        }
-    });
+            const fileCount = fileInput.files.length;
 
+            let fileListHtml = `
+                <i class="fas fa-check-circle text-success me-1"></i>
+                <strong>${fileCount} arquivo(s) selecionado(s):</strong><br>
+                <div class="list-group list-group-flush mt-2">
+            `;
+
+            Array.from(fileInput.files).forEach((file, index) => {
+                fileListHtml += `
+                    <div class="list-group-item d-flex justify-content-between align-items-center p-1">
+                        <span class="small text-truncate me-2">${file.name}</span>
+                        <button type="button" class="btn btn-danger btn-sm"
+                                onclick="removerAnexo(${index})"
+                                title="Remover anexo">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                `;
+            });
+
+            fileListHtml += `</div>`;
+
+            display.innerHTML = fileListHtml;
+            note.style.display = 'none';
+        } else {
+            display.innerHTML = '';
+            note.style.display = 'block';
+        }
+    }
+</script>
 </script>

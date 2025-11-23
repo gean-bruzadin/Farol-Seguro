@@ -1,6 +1,7 @@
 using Farol_Seguro.Config;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.Extensions.Options; // Necessário para a configuração
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,17 +13,20 @@ builder.Services.AddDbContext<DbConfig>(options =>
     )
 );
 
+// --- NOVO: Configuração para o Código Secreto de Admin ---
+builder.Services.Configure<AcessoAdminConfig>(
+    builder.Configuration.GetSection("AcessoAdmin")
+);
+// ---------------------------------------------------------
+
 // Configuração de autenticação com Cookies
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(config =>
     {
-        config.Cookie.Name = "FarolAuthCookie"; // Nome mais genérico
+        config.Cookie.Name = "FarolAuthCookie";
+        // Rota de Login conforme definido no seu código original
         config.LoginPath = "/Autenticacao/Login";
-
-        // CORREÇÃO: Defina uma página diferente, ou comente/remova se não tiver uma.
-        // Se você não definir uma, o ASP.NET Core apenas retornará um status 403 (Forbidden).
-        config.AccessDeniedPath = "/Home/AcessoNegado"; // Crie uma view em Views/Home/AcessoNegado
-
+        config.AccessDeniedPath = "/Home/AcessoNegado";
         config.ExpireTimeSpan = TimeSpan.FromHours(1);
         config.SlidingExpiration = true;
     });
@@ -47,9 +51,9 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Rota padrão deve ser a Home, não o Login
+// Rota padrão é Autenticacao/Login
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=autenticacao}/{action=login}/{id?}");
+    pattern: "{controller=Autenticacao}/{action=Login}/{id?}");
 
 app.Run();

@@ -6,30 +6,35 @@ using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 using BCrypt.Net;
 using System;
-using Microsoft.AspNetCore.Authorization; // Adicionado para [Authorize] e [AllowAnonymous]
+using Microsoft.AspNetCore.Authorization;
+using System.Linq;
+using Microsoft.Extensions.Options; // NOVO
 
 namespace Farol_Seguro.Controllers
 {
-    // APLICA [Authorize] EM TODOS OS MÉTODOS POR PADRÃO
     [Authorize]
     public class UsuarioController : Controller
     {
+        // VARIÁVEL PARA GUARDAR A CHAVE INJETADA DO appsettings.json
+        private readonly string _codigoSecreto;
         private readonly DbConfig _context;
 
-        public UsuarioController(DbConfig context)
+        // NOVO CONSTRUTOR: Injetando DbConfig e IOptions para a configuração
+        public UsuarioController(DbConfig context, IOptions<AcessoAdminConfig> acessoAdminConfig)
         {
             _context = context;
+            // Carrega o valor do appsettings.json
+            _codigoSecreto = acessoAdminConfig.Value.CodigoSecreto;
         }
 
-        // GET: Usuario
-        // Requer autenticação, pois [Authorize] está no nível do Controller
+        // --- AÇÕES PROTEGIDAS POR [Authorize] (PADRÃO DO CONTROLLER) ---
+
         public async Task<IActionResult> Index()
         {
             var usuarios = _context.Usuarios.Include(u => u.Nivel);
             return View(await usuarios.ToListAsync());
         }
 
-        // GET: Usuario/Details/5
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null) return NotFound();
@@ -40,48 +45,6 @@ namespace Farol_Seguro.Controllers
             return View(usuario);
         }
 
-        // GET: Usuario/Create
-        // PERMITE ACESSO SEM AUTENTICAÇÃO
-        [AllowAnonymous]
-        public IActionResult Criar()
-        {
-            return View();
-        }
-
-        // POST: Usuario/Create
-        // PERMITE ACESSO SEM AUTENTICAÇÃO
-        [HttpPost]
-        [AllowAnonymous]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Criar(Usuario usuario)
-        {
-            try
-            {
-                // 1. Força o Nível = 3 (Admin)
-                usuario.Id_Nivel = 3;
-
-                // 2. Hashing da senha
-                if (!string.IsNullOrEmpty(usuario.Senha_Usuario))
-                {
-                    usuario.Senha_Usuario = BCrypt.Net.BCrypt.HashPassword(usuario.Senha_Usuario);
-                }
-
-                _context.Add(usuario);
-                await _context.SaveChangesAsync();
-
-                TempData["MensagemSucesso"] = $"O Administrador '{usuario.Nome_Usuario}' foi criado com sucesso!";
-                return RedirectToAction(nameof(Index));
-            }
-            catch (Exception ex)
-            {
-                // Em caso de erro (ex: violação de constraint de e-mail único no banco)
-                TempData["MensagemErro"] = $"Falha ao criar o Administrador. Erro: {ex.Message}";
-            }
-
-            // Retorna à View em caso de erro
-            return View(usuario);
-        }
-
         // GET: Usuario/Edit/5
         public async Task<IActionResult> Editar(int? id)
         {
@@ -89,7 +52,6 @@ namespace Farol_Seguro.Controllers
             var usuario = await _context.Usuarios.FindAsync(id);
             if (usuario == null) return NotFound();
 
-            // Limpa o campo de senha para não expor o hash na View
             usuario.Senha_Usuario = string.Empty;
 
             return View(usuario);
@@ -104,7 +66,6 @@ namespace Farol_Seguro.Controllers
 
             try
             {
-                // Busca o usuário existente (sem rastreamento para evitar conflitos de ID)
                 var usuarioParaAtualizar = await _context.Usuarios.AsNoTracking().FirstOrDefaultAsync(u => u.Id_Usuario == id);
 
                 if (usuarioParaAtualizar == null)
@@ -113,21 +74,16 @@ namespace Farol_Seguro.Controllers
                     return NotFound();
                 }
 
-                // 1. Atualiza os campos que vieram do formulário
                 usuarioParaAtualizar.Nome_Usuario = usuario.Nome_Usuario;
                 usuarioParaAtualizar.Email_Usuario = usuario.Email_Usuario;
-
-                // 2. Garante que o Nível permaneça 3
                 usuarioParaAtualizar.Id_Nivel = 3;
 
-                // 3. Lógica de senha: Só atualiza/faz Hash se uma nova senha for fornecida
                 if (!string.IsNullOrWhiteSpace(usuario.Senha_Usuario))
                 {
                     usuarioParaAtualizar.Senha_Usuario = BCrypt.Net.BCrypt.HashPassword(usuario.Senha_Usuario);
                 }
                 else
                 {
-                    // Se a senha estiver vazia, busca a senha antiga no banco para manter
                     var senhaAntiga = await _context.Usuarios
                         .Where(u => u.Id_Usuario == id)
                         .Select(u => u.Senha_Usuario)
@@ -136,9 +92,7 @@ namespace Farol_Seguro.Controllers
                     usuarioParaAtualizar.Senha_Usuario = senhaAntiga;
                 }
 
-                // 4. Anexa o objeto com a senha (nova ou antiga) e marca como modificado
                 _context.Entry(usuarioParaAtualizar).State = EntityState.Modified;
-
                 await _context.SaveChangesAsync();
 
                 TempData["MensagemSucesso"] = $"O Administrador '{usuario.Nome_Usuario}' foi atualizado com sucesso!";
@@ -158,7 +112,6 @@ namespace Farol_Seguro.Controllers
                 TempData["MensagemErro"] = $"Falha ao atualizar o Administrador. Erro: {ex.Message}";
             }
 
-            // Retorna à View em caso de erro
             return View(usuario);
         }
 
@@ -195,15 +148,130 @@ namespace Farol_Seguro.Controllers
             }
             catch (Exception ex)
             {
-                // Captura erro de banco (ex: violação de chave estrangeira, se houver)
                 TempData["MensagemErro"] = $"Falha ao excluir o Administrador. Erro: {ex.Message}";
-                return RedirectToAction(nameof(Deletar), new { id }); // Retorna para a tela de exclusão com erro
+                return RedirectToAction(nameof(Deletar), new { id });
             }
         }
 
         private bool UsuarioExists(int id)
         {
             return _context.Usuarios.Any(e => e.Id_Usuario == id);
+        }
+
+        // --- AÇÕES DE CRIAÇÃO DO PRIMEIRO ADMIN (BOOTSTRAP) ---
+
+        // GET: Usuario/AcessoAdmin (Nova tela para digitar o código)
+        [AllowAnonymous]
+        public async Task<IActionResult> AcessoAdmin()
+        {
+            // Se já existem usuários, redireciona para o login (fim do bootstrap)
+            if (await _context.Usuarios.AnyAsync())
+            {
+                TempData["MensagemErro"] = "O registro por código secreto está desativado. Por favor, faça login com uma conta de administrador.";
+                // Assume que a rota de Login é Conta/Login
+                return RedirectToRoute(new { controller = "Conta", action = "Login" });
+            }
+            return View();
+        }
+
+        // POST: Usuario/AcessoAdmin - Checa o código
+        [HttpPost]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AcessoAdmin(string codigo)
+        {
+            // Se a tabela não estiver vazia, redireciona para o Login.
+            if (await _context.Usuarios.AnyAsync())
+            {
+                TempData["MensagemErro"] = "O registro por código secreto está desativado. Por favor, faça login com uma conta de administrador.";
+                return RedirectToRoute(new { controller = "Conta", action = "Login" });
+            }
+
+            // Compara com a chave injetada
+            if (codigo == _codigoSecreto)
+            {
+                TempData["AcessoPermitido"] = true;
+                return RedirectToAction(nameof(Criar));
+            }
+
+            TempData["MensagemErro"] = "Código de acesso incorreto. Você não pode acessar essa área, apenas administradores.";
+            return View();
+        }
+
+
+        // GET: Usuario/Criar
+        [AllowAnonymous]
+        public async Task<IActionResult> Criar()
+        {
+            bool jaExistemUsuarios = await _context.Usuarios.AnyAsync();
+
+            // 1. SE JÁ EXISTEM USUÁRIOS: Redireciona para Login
+            if (jaExistemUsuarios)
+            {
+                TempData["MensagemErro"] = "Registro de novos administradores está bloqueado. Por favor, faça login com uma conta de administrador existente para adicionar mais.";
+                return RedirectToRoute(new { controller = "Conta", action = "Login" });
+            }
+
+            // 2. SE É O PRIMEIRO REGISTRO (Bootstrap): Requer que o código secreto tenha sido inserido.
+            if (TempData["AcessoPermitido"] == null || (bool)TempData["AcessoPermitido"] != true)
+            {
+                TempData["MensagemErro"] = "Você não pode acessar essa área. Insira o código de acesso de Administrador.";
+                return RedirectToAction(nameof(AcessoAdmin));
+            }
+
+            return View();
+        }
+
+
+        // POST: Usuario/Create
+        [HttpPost]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Criar(Usuario usuario)
+        {
+            bool jaExistemUsuarios = await _context.Usuarios.AnyAsync();
+
+            if (jaExistemUsuarios)
+            {
+                // Se JÁ existem usuários, a criação SÓ pode ser feita por um admin LOGADO.
+                if (!User.Identity.IsAuthenticated)
+                {
+                    TempData["MensagemErro"] = "Registro de novos administradores está desativado. Por favor, faça login com uma conta de Administrador existente para adicionar mais.";
+                    return RedirectToRoute(new { controller = "Conta", action = "Login" });
+                }
+            }
+            else
+            {
+                // Se é o PRIMEIRO USUÁRIO, exige que o código de acesso tenha sido inserido.
+                if (TempData["AcessoPermitido"] == null || (bool)TempData["AcessoPermitido"] != true)
+                {
+                    TempData["MensagemErro"] = "Acesso negado. Necessário inserir o código de segurança antes de prosseguir.";
+                    return RedirectToAction(nameof(AcessoAdmin));
+                }
+            }
+
+            // Lógica de Criação
+            try
+            {
+                usuario.Id_Nivel = 3;
+
+                if (!string.IsNullOrEmpty(usuario.Senha_Usuario))
+                {
+                    usuario.Senha_Usuario = BCrypt.Net.BCrypt.HashPassword(usuario.Senha_Usuario);
+                }
+
+                _context.Add(usuario);
+                await _context.SaveChangesAsync();
+
+                TempData["MensagemSucesso"] = $"O Administrador '{usuario.Nome_Usuario}' foi criado com sucesso!";
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                TempData["MensagemErro"] = $"Falha ao criar o Administrador. Erro: {ex.Message}";
+            }
+
+            return View(usuario);
         }
     }
 }

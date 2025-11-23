@@ -1,0 +1,181 @@
+﻿/* IMPORT FONT POPPINS */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+/* Cores Principais */
+:root {
+    --dark-red: #8B0000; /* Vermelho mais escuro para o fundo e detalhes */
+    --medium-red: #A02D33; /* Vermelho médio para gradientes e hover */
+    --text-color: #1a1a1a; /* Preto quase puro para textos */
+    --light-gray: #f5f5f5; /* Cinza claro para o fundo dos inputs */
+    --white: #ffffff;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    /* Aplica Poppins no global */
+    font-family: 'Poppins', sans-serif;
+}
+
+/* CORREÇÃO CRÍTICA: Garante que o fundo e a fonte sejam aplicados sobre o Bootstrap */
+html, body {
+    height: 100vh;
+    background: linear-gradient(135deg, var(--dark-red), var(--medium-red));
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    font-family: 'Poppins', sans-serif !important;
+}
+
+/* Container Principal */
+.container {
+    background-color: var(--white);
+    width: 90%;
+    max-width: 500px; /* Reduzido para focar apenas no formulário */
+    display: flex;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    /* Ajuste para garantir que o container não seja muito largo verticalmente se não tiver a imagem */
+    min-height: 350px;
+}
+
+/* Lado da Imagem/Esquerda (Não usado nesta view) */
+.image-side {
+    flex: 1.2;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+    background-color: var(--light-gray);
+}
+
+/* Lado do Formulário/Direita - Adaptado para ocupar 100% do container */
+.form-side {
+    flex: 1;
+    padding: 50px 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 100%; /* Garante que ocupe todo o container */
+}
+
+.title {
+    margin-bottom: 35px;
+    color: var(--text-color);
+    font-size: 32px;
+    text-align: center;
+    font-weight: 700;
+}
+
+/* Estilo para cada campo de input (Melhorado) */
+.input-field {
+    display: flex;
+    align-items: center;
+    background-color: var(--white);
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    padding: 10px 15px;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+}
+
+    /* Ícones */
+    .input-field .icon {
+        color: var(--medium-red);
+        font-size: 24px;
+        margin-right: 12px;
+        min-width: 24px;
+    }
+
+    /* CORREÇÃO CRÍTICA: Sobrescreve o Bootstrap '.form-control' dentro do '.input-field' */
+    .input-field .form-control {
+        border: none !important;
+        box-shadow: none !important;
+        outline: none !important;
+        width: 100%;
+        font-size: 16px;
+        color: var(--text-color);
+        padding: 5px 0;
+        background-color: transparent !important;
+        font-family: 'Poppins', sans-serif !important;
+    }
+
+    /* Efeito de foco (hover/focus) */
+    .input-field:focus-within {
+        border-color: var(--dark-red);
+        box-shadow: 0 0 10px rgba(139, 0, 0, 0.3);
+    }
+
+/* Botão de Cadastro (Renomeado para .btn-register) */
+.btn-register {
+    padding: 15px;
+    background: linear-gradient(135deg, var(--dark-red) 0%, var(--medium-red) 100%);
+    color: var(--white);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 17px;
+    width: 100%;
+    font-weight: 600;
+    margin-top: 10px;
+}
+
+    .btn-register:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 15px rgba(139, 0, 0, 0.4);
+    }
+
+/* Link de Cadastro/Login (Estiliza o link "Voltar ao Login") */
+.login-link {
+    margin-top: 25px;
+    font-size: 15px;
+    text-align: center;
+    color: var(--text-color);
+}
+
+    .login-link a {
+        color: var(--dark-red);
+        text-decoration: none;
+        font-weight: 600;
+        transition: color 0.3s ease;
+    }
+
+        .login-link a:hover {
+            color: var(--medium-red);
+            text-decoration: underline;
+        }
+
+/* Validação de Erro */
+/* Note: O seu HTML está usando .alert-danger do Bootstrap, que já tem um bom estilo. */
+/* Se quiser customizar o texto de validação de campo (validation message), use este: */
+.text-danger {
+    color: var(--dark-red);
+    font-size: 12px;
+    margin-top: 5px;
+    position: absolute;
+    bottom: -18px;
+    left: 0;
+}
+
+/* Media Query para telas menores */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+        max-width: 400px;
+    }
+
+    .image-side {
+        display: none;
+    }
+
+    .form-side {
+        padding: 40px 30px;
+    }
+
+    .title {
+        font-size: 28px;
+    }
+}

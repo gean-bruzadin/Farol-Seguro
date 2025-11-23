@@ -1,0 +1,43 @@
+﻿@model dynamic
+@{
+    ViewData["Title"] = "Acesso de Administrador";
+    // Mantém o layout nulo para que o CSS do body/html seja aplicado
+    Layout = null;
+}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<link rel="stylesheet" href="~/css/AcessoAdmin.css" />
+
+<div class="container">
+    <div class="form-side">
+        <h1 class="title">Acesso Restrito</h1>
+
+        <p>Por favor, insira o código de acesso para criar a conta de Administrador:</p>
+
+        @if (TempData["MensagemErro"] != null)
+        {
+            <div class="alert alert-danger" role="alert">
+                <strong>Erro:</strong> @TempData["MensagemErro"]
+            </div>
+        }
+
+        <form asp-action="AcessoAdmin" method="post">
+            <div class="input-field">
+                <i class="icon fas fa-lock"></i> <input type="password"
+                                                        name="codigo"
+                                                        id="codigo"
+                                                        class="form-control"
+                                                        placeholder="Código Secreto"
+                                                        required />
+            </div>
+
+            <div class="form-group mt-3">
+                <input type="submit" value="Acessar Área de Criação" class="btn-register" />
+            </div>
+        </form>
+
+        <div class="mt-4 login-link">
+            <a asp-controller="Conta" asp-action="Login">Voltar ao Login</a>
+        </div>
+    </div>
+</div>

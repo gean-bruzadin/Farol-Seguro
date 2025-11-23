@@ -149,10 +149,10 @@ namespace Farol_Seguro.Controllers
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Aluno")]
         public async Task<IActionResult> Criar(
-            [Bind("Titulo_Denuncia,Descricao_Denuncia,Categoria_Denuncia,Id_Escola,DenunciaAnonima")] Denuncia denuncia,
-            List<IFormFile> anexosArquivos,
-            List<string> Nome_Testemunha,
-            List<string> Telefone_Testemunha)
+    [Bind("Titulo_Denuncia,Descricao_Denuncia,Categoria_Denuncia,Id_Escola,DenunciaAnonima")] Denuncia denuncia,
+    List<IFormFile> anexosArquivos, // Esta lista virá vazia se o Model Binding falhar!
+    List<string> Nome_Testemunha,
+    List<string> Telefone_Testemunha)
         {
             int idAluno = ObterIdAlunoLogado();
             if (idAluno <= 0)
@@ -177,7 +177,7 @@ namespace Farol_Seguro.Controllers
                 denuncia.Status_Denuncia = "Aberta";
                 denuncia.Id_Aluno = idAluno;
 
-                // Salva a denúncia para obter o Id_Denuncia
+                // Salva a denúncia para obter o Id_Denuncia (PRIMEIRO SAVE)
                 _context.Add(denuncia);
                 await _context.SaveChangesAsync();
 
@@ -188,29 +188,51 @@ namespace Farol_Seguro.Controllers
                     if (!Directory.Exists(uploadsPasta))
                         Directory.CreateDirectory(uploadsPasta);
 
+                    var anexosFalhos = new List<string>(); // Para rastrear falhas de I/O
+
                     foreach (var anexoArquivo in anexosArquivos.Where(f => f != null && f.Length > 0))
                     {
-                        string nomeArquivoUnico = Guid.NewGuid() + "_" + Path.GetFileName(anexoArquivo.FileName);
-                        string caminhoArquivo = Path.Combine(uploadsPasta, nomeArquivoUnico);
-
-                        using (var fileStream = new FileStream(caminhoArquivo, FileMode.Create))
+                        try
                         {
-                            await anexoArquivo.CopyToAsync(fileStream);
+                            string nomeArquivoUnico = Guid.NewGuid() + "_" + Path.GetFileName(anexoArquivo.FileName);
+                            string caminhoArquivo = Path.Combine(uploadsPasta, nomeArquivoUnico);
+
+                            // Tenta salvar no disco (Ponto mais comum de falha de I/O/Permissão)
+                            using (var fileStream = new FileStream(caminhoArquivo, FileMode.Create))
+                            {
+                                await anexoArquivo.CopyToAsync(fileStream);
+                            }
+
+                            // Se o disco funcionou, prepara o registro no banco
+                            var anexo = new Anexo
+                            {
+                                Tipo_Anexo = anexoArquivo.ContentType,
+                                NomeOriginal_Anexo = Path.GetFileName(anexoArquivo.FileName),
+                                Caminho_Anexo = "/uploads/" + nomeArquivoUnico,
+                                Id_Denuncia = denuncia.Id_Denuncia
+                            };
+                            _context.Anexos.Add(anexo);
                         }
-
-                        var anexo = new Anexo
+                        catch (Exception ex)
                         {
-                            Tipo_Anexo = anexoArquivo.ContentType,
-                            NomeOriginal_Anexo = Path.GetFileName(anexoArquivo.FileName),
-                            Caminho_Anexo = "/uploads/" + nomeArquivoUnico,
-                            Id_Denuncia = denuncia.Id_Denuncia
-                        };
-                        _context.Anexos.Add(anexo);
+                            // Captura falha de upload de UM único arquivo e continua.
+                            anexosFalhos.Add(anexoArquivo.FileName);
+                            // O erro de I/O está aqui, mas o loop continua.
+                        }
                     }
+
+                    // Salva todos os anexos que foram adicionados com sucesso (SEGUNDO SAVE)
                     await _context.SaveChangesAsync();
+
+                    // Adiciona a mensagem de erro de anexo ao TempData, se houver falhas.
+                    if (anexosFalhos.Any())
+                    {
+                        // Note: Esta mensagem será combinada com a MensagemSucesso.
+                        TempData["MensagemErro"] = $"⚠️ **ALERTA DE ANEXO:** Os arquivos ({string.Join(", ", anexosFalhos)}) falharam ao ser enviados. Verifique as permissões da pasta 'uploads' no servidor.";
+                    }
                 }
 
-                // 2. Lógica de testemunhas
+                // 2. Lógica de testemunhas (TERCEIRO SAVE) - Mantida inalterada
                 if (Nome_Testemunha != null && Nome_Testemunha.Count > 0)
                 {
                     for (int i = 0; i < Nome_Testemunha.Count; i++)
@@ -223,7 +245,7 @@ namespace Farol_Seguro.Controllers
                             Telefone_Testemunha = Telefone_Testemunha.ElementAtOrDefault(i)
                         };
                         _context.Testemunhas.Add(testemunha);
-                        await _context.SaveChangesAsync(); // Salva para obter o ID
+                        await _context.SaveChangesAsync(); // Salva para obter o ID (melhor mover este save para fora do loop se for possível, mas mantendo sua lógica atual)
 
                         var relacao = new DenunciaTestemunha
                         {
@@ -240,7 +262,8 @@ namespace Farol_Seguro.Controllers
             }
             catch (Exception ex)
             {
-                TempData["MensagemErro"] = $"Ocorreu um erro ao salvar a denúncia: {ex.Message}";
+                // Captura falhas de DB (Constraint) ou erros críticos de lógica.
+                TempData["MensagemErro"] = $"Ocorreu um erro CRÍTICO ao salvar a denúncia: {ex.Message}";
                 ViewData["Id_Escola"] = new SelectList(_context.Escolas, "Id_Escola", "Nome_Escola", denuncia.Id_Escola);
                 return View(denuncia);
             }

@@ -270,7 +270,7 @@ namespace Farol_Seguro.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Aluno")]
+        [Authorize(Roles = "Aluno,Funcionario,Admin")] // Deixa todos verem o form, mas aplica o bloqueio de edição
         public async Task<IActionResult> Editar(int? id)
         {
             int idAlunoLogado = ObterIdAlunoLogado();
@@ -285,49 +285,43 @@ namespace Farol_Seguro.Controllers
 
             if (denuncia == null) { return NotFound(); }
 
-            // === 1. BLOQUEIO SE A DENÚNCIA FOR FALSA ===
+            // --- Regras de Bloqueio para EDIÇÃO ---
+            string status = denuncia.Status_Denuncia?.ToLower();
+            bool isAluno = User.IsInRole("Aluno");
+            bool isStatusAberta = status == "aberta";
+
+            // 1. BLOQUEIO GERAL: Denúncia Falsa
             if (denuncia.IsFalsa)
             {
                 TempData["MensagemErro"] = "⚠️ **DENÚNCIA FALSA:** Não é possível editar denúncias que foram marcadas como Falsas.";
-                return RedirectToAction(nameof(MinhasDenuncias));
-            }
-            // =======================================================================
-
-            string status = denuncia.Status_Denuncia?.ToLower();
-
-            // 🔒 BLOQUEIO GERAL: Status = Investigação → NÃO EDITA
-            if (status == "investigacao")
-            {
-                TempData["MensagemErro"] = $"Denúncias em '{denuncia.Status_Denuncia}' não podem ser editadas.";
                 return RedirectToAction(nameof(Detalhes), new { id });
             }
 
-            // 🔒 BLOQUEIO ALUNO:
-            if (User.IsInRole("Aluno"))
+            // 2. BLOQUEIO POR STATUS (Aplicado a TODOS que editam)
+            if (!isStatusAberta)
             {
-                // === 2. VERIFICAÇÃO DE BLOQUEIO DO ALUNO (3 ou mais falsas) ===
+                TempData["MensagemErro"] = $"Denúncias com status '{denuncia.Status_Denuncia}' não podem mais ter seu conteúdo editado.";
+                return RedirectToAction(nameof(Detalhes), new { id });
+            }
+
+            // 3. BLOQUEIO ALUNO: Só pode editar a própria denúncia
+            if (isAluno && denuncia.Id_Aluno.HasValue && denuncia.Id_Aluno.Value != idAlunoLogado)
+            {
+                TempData["MensagemErro"] = "Você não tem permissão para editar esta denúncia.";
+                return RedirectToAction(nameof(Detalhes), new { id });
+            }
+
+            // 4. BLOQUEIO ALUNO: Aluno bloqueado
+            if (isAluno)
+            {
                 var aluno = await _context.Alunos.FindAsync(idAlunoLogado);
                 if (aluno != null && aluno.IsBloqueado)
                 {
                     TempData["MensagemErro"] = "🚫 **ALUNO BLOQUEADO:** Você está impedido de editar denúncias devido ao histórico de denúncias falsas.";
-                    return RedirectToAction(nameof(MinhasDenuncias)); // Redireciona para sua lista.
-                }
-                // ===============================================================
-
-                // 🔒 Aluno só pode editar a própria denúncia
-                if (denuncia.Id_Aluno.HasValue && denuncia.Id_Aluno.Value != idAlunoLogado)
-                {
-                    TempData["MensagemErro"] = "Você não tem permissão para editar esta denúncia.";
-                    return RedirectToAction(nameof(Detalhes), new { id });
-                }
-
-                // 🔒 Aluno não pode editar denúncias com status finalizado
-                if (status == "respondida" || status == "resolvida" || status == "encerrada")
-                {
-                    TempData["MensagemErro"] = $"Denúncias com status '{denuncia.Status_Denuncia}' não podem ser editadas.";
-                    return RedirectToAction(nameof(Detalhes), new { id });
+                    return RedirectToAction(nameof(MinhasDenuncias));
                 }
             }
+
 
             ViewData["Id_Aluno"] = new SelectList(_context.Alunos, "Id_Aluno", "Nome_Aluno", denuncia.Id_Aluno);
             ViewData["Id_Escola"] = new SelectList(_context.Escolas, "Id_Escola", "Nome_Escola", denuncia.Id_Escola);
@@ -335,9 +329,13 @@ namespace Farol_Seguro.Controllers
             return View(denuncia);
         }
 
+        // -------------------------------------------------------------------
+        // AÇÃO HTTP POST: EDITAR (Salva as alterações)
+        // -------------------------------------------------------------------
+
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Aluno")]
+        [Authorize(Roles = "Aluno,Funcionario,Admin")]
         public async Task<IActionResult> Editar(
             int id,
             Denuncia denunciaAtualizada,
@@ -350,143 +348,143 @@ namespace Farol_Seguro.Controllers
             var denuncia = await _context.Denuncias
                 .Include(d => d.DenunciaTestemunhas)
                     .ThenInclude(dt => dt.Testemunha)
-                .Include(d => d.Anexos) // Inclui anexos para poder listar os existentes na view se algo der errado
+                .Include(d => d.Anexos)
                 .FirstOrDefaultAsync(d => d.Id_Denuncia == id);
 
             if (denuncia == null) { return NotFound(); }
 
-            // === 1. BLOQUEIO SE A DENÚNCIA FOR FALSA (POST) ===
+            string statusOriginal = denuncia.Status_Denuncia?.ToLower();
+            int idAlunoLogado = ObterIdAlunoLogado();
+            bool isAluno = User.IsInRole("Aluno");
+            bool isFuncionarioAdmin = User.IsInRole("Funcionario") || User.IsInRole("Admin");
+
+            // --- Regra de Bloqueio por Status (SÓ PODE EDITAR CONTEÚDO SE FOR "ABERTA") ---
+            bool podeEditarConteudo = statusOriginal == "aberta";
+
+
+            // --- BLOQUEIOS ANTES DE QUALQUER ATUALIZAÇÃO ---
+
+            // 1. BLOQUEIO GERAL: Denúncia Falsa
             if (denuncia.IsFalsa)
             {
-                TempData["MensagemErro"] = "⚠️ **DENÚNCIA FALSA:** Não é possível editar denúncias que foram marcadas como Falsas.";
+                TempData["MensagemErro"] = "⚠️ **DENÚNCIA FALSA:** Não é possível salvar denúncias que foram marcadas como Falsas.";
                 return RedirectToAction(nameof(MinhasDenuncias));
             }
-            // ===========================================================================
 
-            string status = denuncia.Status_Denuncia?.ToLower();
-            int idAlunoLogado = ObterIdAlunoLogado();
-
-            // 🔒 Bloqueio no POST (Investigação)
-            if (status == "investigacao")
+            // 2. BLOQUEIO ALUNO: Checa se é o dono e se está bloqueado
+            if (isAluno)
             {
-                TempData["MensagemErro"] = $"Denúncias em '{denuncia.Status_Denuncia}' não podem ser salvas.";
-                return RedirectToAction(nameof(Detalhes), new { id });
-            }
-
-            // 🔒 Segurança adicional para alunos
-            if (User.IsInRole("Aluno"))
-            {
-                // === 2. VERIFICAÇÃO DE BLOQUEIO DO ALUNO (3 ou mais falsas) ===
                 var aluno = await _context.Alunos.FindAsync(idAlunoLogado);
                 if (aluno != null && aluno.IsBloqueado)
                 {
                     TempData["MensagemErro"] = "🚫 **ALUNO BLOQUEADO:** Você está impedido de editar denúncias devido ao histórico de denúncias falsas.";
-                    return RedirectToAction(nameof(MinhasDenuncias)); // Redireciona para sua lista.
+                    return RedirectToAction(nameof(MinhasDenuncias));
                 }
-                // ===============================================================
 
-                // 🔒 Aluno só pode editar a própria denúncia
+                // 3. BLOQUEIO ALUNO: Só pode editar a própria denúncia
                 if (denuncia.Id_Aluno.HasValue && denuncia.Id_Aluno.Value != idAlunoLogado)
                 {
                     TempData["MensagemErro"] = "Você não pode editar esta denúncia.";
-                    return RedirectToAction(nameof(Detalhes), new { id });
-                }
-
-                // 🔒 Aluno não pode editar denúncias com status finalizado
-                if (status == "respondida" || status == "resolvida" || status == "encerrada")
-                {
-                    TempData["MensagemErro"] = $"Denúncias com status '{denuncia.Status_Denuncia}' não podem ser editadas.";
                     return RedirectToAction(nameof(Detalhes), new { id });
                 }
             }
 
             try
             {
-                // Atualiza campos básicos
-                denuncia.Titulo_Denuncia = denunciaAtualizada.Titulo_Denuncia;
-                denuncia.Descricao_Denuncia = denunciaAtualizada.Descricao_Denuncia;
-                denuncia.Categoria_Denuncia = denunciaAtualizada.Categoria_Denuncia;
-                denuncia.DenunciaAnonima = denunciaAtualizada.DenunciaAnonima;
-                denuncia.Id_Escola = denunciaAtualizada.Id_Escola;
+                // --- ATUALIZAÇÃO DE CONTEÚDO (Permitida SOMENTE se status for "Aberta") ---
+                if (podeEditarConteudo)
+                {
+                    // Atualiza campos básicos
+                    denuncia.Titulo_Denuncia = denunciaAtualizada.Titulo_Denuncia;
+                    denuncia.Descricao_Denuncia = denunciaAtualizada.Descricao_Denuncia;
+                    denuncia.Categoria_Denuncia = denunciaAtualizada.Categoria_Denuncia;
+                    denuncia.DenunciaAnonima = denunciaAtualizada.DenunciaAnonima;
+                    denuncia.Id_Escola = denunciaAtualizada.Id_Escola;
 
-                // Funcionário/Admin podem editar aluno e status
-                if (User.IsInRole("Funcionario") || User.IsInRole("Admin"))
+                    #region Adição de Novos Anexos
+                    if (novosAnexosArquivos != null && novosAnexosArquivos.Count > 0)
+                    {
+                        string uploadsPasta = Path.Combine(_webHostEnvironment.WebRootPath, "uploads");
+                        if (!Directory.Exists(uploadsPasta)) Directory.CreateDirectory(uploadsPasta);
+
+                        foreach (var anexoArquivo in novosAnexosArquivos.Where(f => f != null && f.Length > 0))
+                        {
+                            string nomeArquivoUnico = Guid.NewGuid() + "_" + Path.GetFileName(anexoArquivo.FileName);
+                            string caminhoArquivo = Path.Combine(uploadsPasta, nomeArquivoUnico);
+
+                            using (var fileStream = new FileStream(caminhoArquivo, FileMode.Create))
+                            {
+                                await anexoArquivo.CopyToAsync(fileStream);
+                            }
+
+                            var anexo = new Anexo
+                            {
+                                Tipo_Anexo = anexoArquivo.ContentType,
+                                NomeOriginal_Anexo = Path.GetFileName(anexoArquivo.FileName),
+                                Caminho_Anexo = "/uploads/" + nomeArquivoUnico,
+                                Id_Denuncia = denuncia.Id_Denuncia
+                            };
+                            _context.Anexos.Add(anexo);
+                        }
+                    }
+                    #endregion
+
+                    #region Atualização de Testemunhas
+                    // Remove as relações DenunciaTestemunha antigas
+                    if (denuncia.DenunciaTestemunhas != null && denuncia.DenunciaTestemunhas.Any())
+                    {
+                        _context.DenunciaTestemunhas.RemoveRange(denuncia.DenunciaTestemunhas);
+                    }
+
+                    // Adiciona as novas testemunhas e recria as relações
+                    if (Nome_Testemunha != null && Nome_Testemunha.Count > 0)
+                    {
+                        for (int i = 0; i < Nome_Testemunha.Count; i++)
+                        {
+                            if (string.IsNullOrWhiteSpace(Nome_Testemunha[i])) continue;
+
+                            var testemunha = new Testemunha
+                            {
+                                Nome_Testemunha = Nome_Testemunha[i],
+                                Telefone_Testemunha = Telefone_Testemunha.ElementAtOrDefault(i)
+                            };
+                            _context.Testemunhas.Add(testemunha);
+                            await _context.SaveChangesAsync();
+
+                            var relacao = new DenunciaTestemunha
+                            {
+                                Id_Denuncia = denuncia.Id_Denuncia,
+                                Id_Testemunha = testemunha.Id_Testemunha
+                            };
+                            _context.DenunciaTestemunhas.Add(relacao);
+                        }
+                    }
+
+                    // Remove testemunhas órfãs
+                    var testemunhasOrfas = await _context.Testemunhas
+                        .Where(t => !_context.DenunciaTestemunhas.Any(dt => dt.Id_Testemunha == t.Id_Testemunha))
+                        .ToListAsync();
+
+                    _context.Testemunhas.RemoveRange(testemunhasOrfas);
+                    #endregion
+                }
+                else if (isAluno)
+                {
+                    // Se o aluno tentou editar quando o status não é "Aberta"
+                    TempData["MensagemErro"] = $"A edição de conteúdo não é permitida, pois o status da denúncia é '{denuncia.Status_Denuncia}'.";
+                    return RedirectToAction(nameof(Detalhes), new { id });
+                }
+
+
+                // --- ATUALIZAÇÃO DE CAMPOS ADMINISTRATIVOS (Permitida SOMENTE por Funcionário/Admin) ---
+                if (isFuncionarioAdmin)
                 {
                     denuncia.Id_Aluno = denunciaAtualizada.Id_Aluno;
                     denuncia.Status_Denuncia = denunciaAtualizada.Status_Denuncia ?? denuncia.Status_Denuncia;
                 }
 
-                #region Adição de Novos Anexos
-                if (novosAnexosArquivos != null && novosAnexosArquivos.Count > 0)
-                {
-                    string uploadsPasta = Path.Combine(_webHostEnvironment.WebRootPath, "uploads");
-                    if (!Directory.Exists(uploadsPasta)) Directory.CreateDirectory(uploadsPasta);
-
-                    foreach (var anexoArquivo in novosAnexosArquivos.Where(f => f != null && f.Length > 0))
-                    {
-                        string nomeArquivoUnico = Guid.NewGuid() + "_" + Path.GetFileName(anexoArquivo.FileName);
-                        string caminhoArquivo = Path.Combine(uploadsPasta, nomeArquivoUnico);
-
-                        using (var fileStream = new FileStream(caminhoArquivo, FileMode.Create))
-                        {
-                            await anexoArquivo.CopyToAsync(fileStream);
-                        }
-
-                        var anexo = new Anexo
-                        {
-                            Tipo_Anexo = anexoArquivo.ContentType,
-                            NomeOriginal_Anexo = Path.GetFileName(anexoArquivo.FileName),
-                            Caminho_Anexo = "/uploads/" + nomeArquivoUnico,
-                            Id_Denuncia = denuncia.Id_Denuncia
-                        };
-                        _context.Anexos.Add(anexo);
-                    }
-                }
-                #endregion
-
-                #region Adição de Novas Testemunhas e Remoção das Órfãs
-                // Remove as relações DenunciaTestemunha antigas primeiro
-                if (denuncia.DenunciaTestemunhas != null && denuncia.DenunciaTestemunhas.Any())
-                {
-                    _context.DenunciaTestemunhas.RemoveRange(denuncia.DenunciaTestemunhas);
-                }
-
-                // Adiciona as novas testemunhas e recria as relações
-                if (Nome_Testemunha != null && Nome_Testemunha.Count > 0)
-                {
-                    for (int i = 0; i < Nome_Testemunha.Count; i++)
-                    {
-                        if (string.IsNullOrWhiteSpace(Nome_Testemunha[i])) continue;
-
-                        var testemunha = new Testemunha
-                        {
-                            Nome_Testemunha = Nome_Testemunha[i],
-                            Telefone_Testemunha = Telefone_Testemunha.ElementAtOrDefault(i)
-                        };
-                        _context.Testemunhas.Add(testemunha);
-                        await _context.SaveChangesAsync(); // Salva para obter o ID
-
-                        var relacao = new DenunciaTestemunha
-                        {
-                            Id_Denuncia = denuncia.Id_Denuncia,
-                            Id_Testemunha = testemunha.Id_Testemunha
-                        };
-                        _context.DenunciaTestemunhas.Add(relacao);
-                    }
-                }
-                #endregion
-
                 _context.Update(denuncia);
                 await _context.SaveChangesAsync();
-
-                // Lógica para remover testemunhas órfãs (Testemunhas que não estão mais relacionadas a nenhuma denúncia)
-                var testemunhasOrfas = await _context.Testemunhas
-                    .Where(t => !_context.DenunciaTestemunhas.Any(dt => dt.Id_Testemunha == t.Id_Testemunha))
-                    .ToListAsync();
-
-                _context.Testemunhas.RemoveRange(testemunhasOrfas);
-                await _context.SaveChangesAsync();
-
 
                 TempData["MensagemSucesso"] = $"Denúncia #{denuncia.Id_Denuncia} atualizada com sucesso!";
                 return RedirectToAction(nameof(Detalhes), new { id });
@@ -495,10 +493,10 @@ namespace Farol_Seguro.Controllers
             {
                 TempData["MensagemErro"] = $"Erro ao atualizar: {ex.Message}";
 
-                ViewData["Id_Aluno"] = new SelectList(_context.Alunos, "Id_Aluno", "Nome_Aluno", denunciaAtualizada.Id_Aluno);
-                ViewData["Id_Escola"] = new SelectList(_context.Escolas, "Id_Escola", "Nome_Escola", denunciaAtualizada.Id_Escola);
+                ViewData["Id_Aluno"] = new SelectList(_context.Alunos, "Id_Aluno", "Nome_Aluno", denuncia.Id_Aluno);
+                ViewData["Id_Escola"] = new SelectList(_context.Escolas, "Id_Escola", "Nome_Escola", denuncia.Id_Escola);
 
-                return View(denunciaAtualizada);
+                return View(denuncia); // Retorna a denúncia original para evitar perda de dados
             }
         }
 

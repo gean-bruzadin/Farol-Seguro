@@ -30,6 +30,8 @@
         <form asp-action="Editar" enctype="multipart/form-data">
             <input type="hidden" asp-for="Id_Denuncia" />
 
+            @Html.AntiForgeryToken()
+
             <div class="form-group">
                 <label asp-for="Titulo_Denuncia" class="form-label">Título da Denúncia</label>
                 <input asp-for="Titulo_Denuncia" class="form-control" />
@@ -88,7 +90,6 @@
 
             <hr class="form-section-divider" />
 
-            <!-- Seção de Anexos -->
             <h5 class="form-subtitle">
                 <i class="fas fa-paperclip"></i>
                 Anexos Atuais
@@ -106,7 +107,7 @@
                                     @(anexo.NomeOriginal_Anexo ?? "Arquivo Anexado")
                                 </a>
                             </div>
-                            <button type="button" class="btn-action btn-danger btn-sm" onclick="removerAnexo(@anexo.Id_Anexo)">
+                            <button type="button" class="btn-action btn-danger btn-sm" onclick="removerAnexo(@anexo.Id_Anexo, @Model.Id_Denuncia)">
                                 <i class="fas fa-times"></i> Remover
                             </button>
                         </div>
@@ -126,7 +127,6 @@
 
             <hr class="form-section-divider" />
 
-            <!-- Seção de Testemunhas -->
             <h5 class="form-subtitle">
                 <i class="fas fa-users"></i>
                 Testemunhas
@@ -155,7 +155,6 @@
                 <i class="fas fa-plus"></i> Adicionar Testemunha
             </button>
 
-            <!-- Botões de Ação -->
             <div class="btn-group btn-group-center">
                 <button type="submit" class="btn btn-primary">
                     <i class="fas fa-save"></i> Salvar Alterações
@@ -186,21 +185,44 @@
         container.appendChild(div);
     }
 
-    function removerAnexo(idAnexo) {
+    // CORREÇÃO AQUI: Aceitando idDenuncia e ajustando a URL para Query String
+    function removerAnexo(idAnexo, idDenuncia) {
         if (!confirm("Tem certeza que deseja remover este anexo?")) return;
 
-        fetch(`/Denuncia/RemoverAnexo/${idAnexo}`, {
+        // O Token Antiforgery é necessário para a Action [ValidateAntiForgeryToken]
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+        // Passa idAnexo e idDenuncia via Query String
+        fetch(`/Denuncia/ExcluirAnexo?idAnexo=${idAnexo}&idDenuncia=${idDenuncia}`, {
             method: 'POST',
             headers: {
-                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                'RequestVerificationToken': token
             }
         })
         .then(r => {
-            if (!r.ok) throw r;
-            document.getElementById(`anexo_${idAnexo}`).remove();
-            alert("Anexo removido!");
+            // Verifica se a resposta HTTP é bem-sucedida (status 200-299)
+            if (!r.ok) {
+                // Se a action no controller redirecionou com erro, o navegador lida com o redirecionamento.
+                // Se o servidor retornar um erro HTTP (ex: 400 ou 500), isso aciona o catch.
+                // Aqui, vamos recarregar a página para ver as mensagens de TempData do servidor.
+                window.location.reload();
+                return;
+            }
+
+            // Se foi sucesso (sua Action ExcluirAnexo retorna RedirectToAction),
+            // a requisição AJAX na verdade recebe um código de redirecionamento (302)
+            // mas o fetch não segue automaticamente o redirecionamento para o GET
+            // do Detalhes que teria a mensagem de sucesso no TempData.
+
+            // Para simplificar e mostrar o resultado do backend:
+            // Recarrega a página para pegar as mensagens de TempData (Sucesso ou Erro) que o servidor setou.
+            window.location.reload();
         })
-        .catch(() => alert("Erro ao remover o anexo."));
+        .catch(err => {
+            // Este catch só é acionado em caso de falha de rede/conexão (não erros lógicos 400/500 do servidor)
+            alert("Erro de conexão ao tentar remover o anexo. Tente novamente.");
+            console.error("Fetch error:", err);
+        });
     }
 </script>
 
@@ -229,9 +251,9 @@
         gap: 10px;
     }
 
-    .attachment-info i {
-        color: #8B0000;
-    }
+        .attachment-info i {
+            color: #8B0000;
+        }
 
     .witnesses-container {
         display: flex;

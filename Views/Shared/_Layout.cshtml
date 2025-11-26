@@ -65,7 +65,7 @@
             <nav class="nav-links">
 
                 @* --- BLOC DE FORMULÁRIOS (Corrigido para Admin) --- *@
-                @if (User.IsInRole("Admin"))
+                @if (User.IsInRole("Admin") || User.IsInRole("Funcionario"))
                 {
                     <div class="header-summary">
                         <details>
@@ -76,18 +76,30 @@
                                 <div class="summary-section">
                                     <div class="summary-section-title">Informações Gerais</div>
 
-                                    <a href="@Url.Action("Index", "Aluno")">Aluno</a>
-                                    <a href="@Url.Action("Index", "Cargo")">Cargo</a>
-                                    <a href="@Url.Action("Index", "Cidade")">Cidade</a>
+                                    @* Admin e Funcionario só não veem alguns itens específicos *@
+
+                                    @if (User.IsInRole("Admin"))
+                                    {
+                                        <a href="@Url.Action("Index", "Aluno")">Aluno</a>
+                                        <a href="@Url.Action("Index", "Cargo")">Cargo</a>
+                                        <a href="@Url.Action("Index", "Cidade")">Cidade</a>
+                                    }
+
+                                    @* Escola deve aparecer para ambos *@
                                     <a href="@Url.Action("Index", "Escola")">Escola</a>
-                                    <a href="@Url.Action("Criar", "Estado")">Estado</a>
-                                    <a href="@Url.Action("Index", "Funcionario")">Funcionário</a>
-                                    <a href="@Url.Action("Index", "Usuario")">Usuario</a>
+
+                                    @if (User.IsInRole("Admin"))
+                                    {
+                                        <a href="@Url.Action("Index", "Estado")">Estado</a>
+                                        <a href="@Url.Action("Index", "Funcionario")">Funcionário</a>
+                                        <a href="@Url.Action("Index", "Usuario")">Usuario</a>
+                                    }
                                 </div>
                             </div>
                         </details>
                     </div>
                 }
+                
 
                 @if (User.IsInRole("Aluno"))
                 {

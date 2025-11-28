@@ -149,12 +149,16 @@ namespace Farol_Seguro.Controllers
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Aluno")]
         public async Task<IActionResult> Criar(
-    [Bind("Titulo_Denuncia,Descricao_Denuncia,Categoria_Denuncia,Id_Escola,DenunciaAnonima")] Denuncia denuncia,
-    List<IFormFile> anexosArquivos, // Esta lista virá vazia se o Model Binding falhar!
-    List<string> Nome_Testemunha,
-    List<string> Telefone_Testemunha)
+ [Bind("Titulo_Denuncia,Descricao_Denuncia,Categoria_Denuncia,Id_Escola,DenunciaAnonima")] Denuncia denuncia,
+ // NOVO PARÂMETRO: String que recebe o valor do campo datetime-local (Dia e Hora do Ocorrido)
+ string DataIncidenteCampo,
+ List<IFormFile> anexosArquivos,
+ List<string> Nome_Testemunha,
+ List<string> Telefone_Testemunha)
         {
             int idAluno = ObterIdAlunoLogado();
+            // ... (restante da lógica de verificação e bloqueio mantida) ...
+
             if (idAluno <= 0)
             {
                 TempData["MensagemErro"] = "Erro: Usuário não autenticado ou ID inválido.";
@@ -173,9 +177,25 @@ namespace Farol_Seguro.Controllers
             try
             {
                 // Configurações básicas da denúncia
+                // ESTA É A DATA DE REGISTRO AUTOMÁTICA
                 denuncia.DataCriacao_Denuncia = DateTime.Now;
                 denuncia.Status_Denuncia = "Aberta";
                 denuncia.Id_Aluno = idAluno;
+
+                // ===============================================
+                // NOVO: INJEÇÃO DA DATA DO OCORRIDO NA DESCRIÇÃO
+                // ===============================================
+                if (!string.IsNullOrEmpty(DataIncidenteCampo) &&
+                    DateTime.TryParse(DataIncidenteCampo, out DateTime dataOcorrido))
+                {
+                    // Formata a data/hora para um formato legível
+                    string dataOcorridoFormatada = dataOcorrido.ToString("dd/MM/yyyy HH:mm");
+
+                    // Adiciona a informação da data do incidente no início da descrição
+                    denuncia.Descricao_Denuncia = $"[OCORRIDO: {dataOcorridoFormatada}] \n\n{denuncia.Descricao_Denuncia}";
+                }
+                // ===============================================
+
 
                 // Salva a denúncia para obter o Id_Denuncia (PRIMEIRO SAVE)
                 _context.Add(denuncia);
@@ -184,11 +204,13 @@ namespace Farol_Seguro.Controllers
                 // 1. Lógica de upload de MÚLTIPLOS anexos
                 if (anexosArquivos != null && anexosArquivos.Count > 0)
                 {
+                    // ... (lógica de upload de anexos mantida) ...
+
                     string uploadsPasta = Path.Combine(_webHostEnvironment.WebRootPath, "uploads");
                     if (!Directory.Exists(uploadsPasta))
                         Directory.CreateDirectory(uploadsPasta);
 
-                    var anexosFalhos = new List<string>(); // Para rastrear falhas de I/O
+                    var anexosFalhos = new List<string>();
 
                     foreach (var anexoArquivo in anexosArquivos.Where(f => f != null && f.Length > 0))
                     {
@@ -197,13 +219,11 @@ namespace Farol_Seguro.Controllers
                             string nomeArquivoUnico = Guid.NewGuid() + "_" + Path.GetFileName(anexoArquivo.FileName);
                             string caminhoArquivo = Path.Combine(uploadsPasta, nomeArquivoUnico);
 
-                            // Tenta salvar no disco (Ponto mais comum de falha de I/O/Permissão)
                             using (var fileStream = new FileStream(caminhoArquivo, FileMode.Create))
                             {
                                 await anexoArquivo.CopyToAsync(fileStream);
                             }
 
-                            // Se o disco funcionou, prepara o registro no banco
                             var anexo = new Anexo
                             {
                                 Tipo_Anexo = anexoArquivo.ContentType,
@@ -215,7 +235,6 @@ namespace Farol_Seguro.Controllers
                         }
                         catch (Exception ex)
                         {
-                            // Captura falha de upload de UM único arquivo e continua.
                             anexosFalhos.Add(anexoArquivo.FileName);
                             // O erro de I/O está aqui, mas o loop continua.
                         }
@@ -224,7 +243,6 @@ namespace Farol_Seguro.Controllers
                     // Salva todos os anexos que foram adicionados com sucesso (SEGUNDO SAVE)
                     await _context.SaveChangesAsync();
 
-                    // Adiciona a mensagem de erro de anexo ao TempData, se houver falhas.
                     if (anexosFalhos.Any())
                     {
                         // Note: Esta mensagem será combinada com a MensagemSucesso.
@@ -245,7 +263,7 @@ namespace Farol_Seguro.Controllers
                             Telefone_Testemunha = Telefone_Testemunha.ElementAtOrDefault(i)
                         };
                         _context.Testemunhas.Add(testemunha);
-                        await _context.SaveChangesAsync(); // Salva para obter o ID (melhor mover este save para fora do loop se for possível, mas mantendo sua lógica atual)
+                        await _context.SaveChangesAsync();
 
                         var relacao = new DenunciaTestemunha
                         {
@@ -262,7 +280,6 @@ namespace Farol_Seguro.Controllers
             }
             catch (Exception ex)
             {
-                // Captura falhas de DB (Constraint) ou erros críticos de lógica.
                 TempData["MensagemErro"] = $"Ocorreu um erro CRÍTICO ao salvar a denúncia: {ex.Message}";
                 ViewData["Id_Escola"] = new SelectList(_context.Escolas, "Id_Escola", "Nome_Escola", denuncia.Id_Escola);
                 return View(denuncia);

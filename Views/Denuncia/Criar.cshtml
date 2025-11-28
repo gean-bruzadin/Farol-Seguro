@@ -8,32 +8,40 @@
 <link href="~/css/denuncia.css" rel="stylesheet" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" integrity="sha512-..." crossorigin="anonymous" />
 
+@* REFERÊNCIA SELECT2 CSS ADICIONADA/DESCOMENTADA *@
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+@* FIM REFERÊNCIA SELECT2 CSS *@
+
 <style>
+
     /* Estilos relacionados ao file upload (mantidos) */
-    .file-upload-container {
-        position: relative;
-        overflow: hidden;
+        .file-upload-container {
+                position: relative;
+                overflow: hidden;
+
     }
 
-        .file-upload-container input[type="file"] {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            opacity: 0;
-            cursor: pointer;
-            z-index: 1;
+                .file-upload-container input[type="file"] {
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        opacity: 0;
+                        cursor: pointer;
+                        z-index: 1;
+
         }
 
-    .anexos-display, .anexos-display button {
-        position: relative;
-        z-index: 20;
+        .anexos-display, .anexos-display button {
+                position: relative;
+                z-index: 20;
+
     }
 </style>
 
 @* =======================================================
-    BLOCO PARA EXIBIR MENSAGENS DE ALERTA (SUCESSO/ERRO)
+    BLOCO PARA EXIBIR MENSAGENS DE ALERTA (SUCESSO/ERRO)
 ======================================================== *@
 @{
     if (TempData["MensagemSucesso"] != null)
@@ -52,7 +60,7 @@
     }
 }
 @* =======================================================
-    FIM DO BLOCO DE MENSAGENS
+    FIM DO BLOCO DE MENSAGENS
 ======================================================== *@
 
 
@@ -86,6 +94,17 @@
                     <span asp-validation-for="Categoria_Denuncia" class="text-danger"></span>
                 </div>
             </div>
+
+            @* CAMPO NOVO: Data e Hora do Ocorrido (Não Mapeado no Model) *@
+            <div class="form-col">
+                <div class="form-group">
+                    <label class="form-label" for="DataIncidenteCampo">Dia e Hora do Ocorrido (Opcional)</label>
+                    <input type="datetime-local" id="DataIncidenteCampo" name="DataIncidenteCampo" class="form-control" />
+                    <div class="form-note"> 
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <div class="form-check mb-3">
@@ -93,11 +112,17 @@
             <label asp-for="DenunciaAnonima" class="form-check-label">Denúncia Anônima</label>
         </div>
 
+        @* CAMPO ESCOLA: Com classe para pesquisa (Select2) *@
         <div class="mb-3">
-            <label asp-for="Id_Escola" class="form-label">Escola</label>
-            <select asp-for="Id_Escola" class="form-select" asp-items="ViewBag.Id_Escola"></select>
+            <label asp-for="Id_Escola" class="form-label">Escola (Pesquisar/Selecionar)</label>
+            @* A classe 'select-searchable' e o id 'selectEscola' são usados pelo JavaScript *@
+            <select asp-for="Id_Escola" class="form-select select-searchable" id="selectEscola" asp-items="ViewBag.Id_Escola">
+                <option value="">Pesquisar ou Selecionar a Escola...</option>
+            </select>
             <span asp-validation-for="Id_Escola" class="text-danger"></span>
+            <div class="form-note">Use a caixa de pesquisa no campo acima para encontrar a escola rapidamente.</div>
         </div>
+        @* ---------------------------------------------------------------------- *@
 
         <div class="form-section">
             <h2 class="form-section-title">
@@ -123,7 +148,6 @@
             <button type="button" class="btn btn-secondary mb-3" onclick="adicionarTestemunha()">Adicionar Outra Testemunha</button>
         </div>
 
-        @* CORREÇÃO FEITA: Removido o '<' extra. Era: <<div, Agora: <div *@
         <div class="form-section">
             <h2 class="form-section-title">
                 <label for="arquivos" class="form-label"> <i class="fas fa-paperclip"></i> Anexos (Fotos, vídeos, áudios)</label>
@@ -148,17 +172,34 @@
     </form>
 </div>
 
+@* --- JQUERY É NECESSÁRIO PARA O SELECT2 --- *@
+<script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawR3S/A3W/U/z5R5x5wWf5+5G5H5R5R5S50=" crossorigin="anonymous"></script>
+@* REFERÊNCIA SELECT2 JS ADICIONADA/DESCOMENTADA *@
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+@* FIM REFERÊNCIA SELECT2 JS *@
+
 <script src="~/js/menu_dropdown.js"></script>
 <script src="~/js/open-modal.js"></script>
-<script src="[https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js](https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js)"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 
 <script>
+    // =======================================================
+    // INICIALIZAÇÃO DO SELECT2 PARA PESQUISA DE ESCOLA
+    // =======================================================
+    $(document).ready(function() {
+        // Inicializa o Select2 no elemento que tem o ID 'selectEscola'
+        $('#selectEscola').select2({
+            placeholder: "Digite o nome da escola para pesquisar...",
+            allowClear: true // Permite desmarcar a seleção
+        });
+    });
+    // =======================================================
+
+
     let testemunhaCount = 1;
-    // VARIÁVEL GLOBAL PARA ARMAZENAR ARQUIVOS ACUMULADOS
     const arquivosSelecionados = new DataTransfer();
 
-    // Função única para adicionar testemunha
     function adicionarTestemunha() {
         testemunhaCount++;
         var container = document.getElementById("testemunhasContainer");
@@ -173,29 +214,16 @@
         container.appendChild(div);
     }
 
-    // =======================================================
-    // FUNÇÃO PARA REMOVER UM ARQUIVO DA LISTA CUMULATIVA
-    // =======================================================
     function removerAnexo(index) {
-        // Remove o item pelo índice na lista acumulada
         arquivosSelecionados.items.remove(index);
-
-        // Atualiza o input original com a nova lista (sem o arquivo removido)
         const fileInput = document.getElementById('arquivos');
         fileInput.files = arquivosSelecionados.files;
-
-        // Renderiza a lista novamente para atualizar a interface
         renderizarListaAnexos(fileInput, document.getElementById('fileNote'), document.getElementById('fileNamesDisplay'));
     }
 
-    // =======================================================
-    // FUNÇÃO AUXILIAR PARA RENDERIZAR A LISTA DE ANEXOS (ÚNICA VERSÃO)
-    // =======================================================
     function renderizarListaAnexos(fileInput, note, display) {
         if (fileInput.files.length > 0) {
             const fileCount = fileInput.files.length;
-
-            // Inicia a lista de nomes dos arquivos selecionados
             let fileListHtml = `
                 <i class="fas fa-check-circle text-success me-1"></i>
                 <strong>${fileCount} arquivo(s) selecionado(s):</strong><br>
@@ -226,28 +254,21 @@
     }
 
 
-    // =======================================================
-    // EVENTO DE MUDANÇA (AGORA SÓ ADICIONA E CHAMA A RENDERIZAÇÃO)
-    // =======================================================
-       document.getElementById('arquivos').addEventListener('change', function(e) {
+    document.getElementById('arquivos').addEventListener('change', function(e) {
         const fileInput = this;
         const note = document.getElementById('fileNote');
         const display = document.getElementById('fileNamesDisplay');
 
         // 1. ADICIONA OS NOVOS ARQUIVOS À VARIÁVEL GLOBAL
         Array.from(e.target.files).forEach(file => {
-              arquivosSelecionados.items.add(file);
+             arquivosSelecionados.items.add(file);
         });
 
         // 2. ATUALIZA O INPUT ORIGINAL COM A LISTA ACUMULADA
-        // ESTA LINHA GARANTE QUE TODOS OS ARQUIVOS VÃO NO POST
         fileInput.files = arquivosSelecionados.files;
 
         // 3. RENDERIZA A LISTA NA TELA
         renderizarListaAnexos(fileInput, note, display);
-
-        // 🛑 LINHA REMOVIDA: e.target.value = null;
-        // Removendo esta linha, o 'fileInput.files' mantém os arquivos acumulados e envia eles!
     });
 
 </script>
